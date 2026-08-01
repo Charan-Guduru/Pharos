@@ -14,6 +14,7 @@ import com.vnrvjiet.attendancemonitor.ui.screens.dashboard.DashboardScreen
 import com.vnrvjiet.attendancemonitor.ui.screens.history.HistoryScreen
 import com.vnrvjiet.attendancemonitor.ui.screens.login.LoginScreen
 import com.vnrvjiet.attendancemonitor.ui.screens.notifications.NotificationsScreen
+import com.vnrvjiet.attendancemonitor.ui.screens.settings.SettingsScreen
 import com.vnrvjiet.attendancemonitor.ui.screens.statistics.StatisticsScreen
 import com.vnrvjiet.attendancemonitor.ui.screens.sync.SyncStatusScreen
 
@@ -38,10 +39,16 @@ fun AppNavigation() {
             DashboardScaffold(navController, Screen.Statistics)
         }
         composable(Screen.Notifications.route) {
-            NotificationsScreen(onBack = { navController.popBackStack() })
+            NotificationsScreen(
+                onBack = { navController.popBackStack() },
+                onSettingsClick = { navController.navigate(Screen.Settings.route) }
+            )
         }
         composable(Screen.SyncStatus.route) {
             SyncStatusScreen(onBack = { navController.popBackStack() })
+        }
+        composable(Screen.Settings.route) {
+            SettingsScreen(onBack = { navController.popBackStack() })
         }
     }
 }

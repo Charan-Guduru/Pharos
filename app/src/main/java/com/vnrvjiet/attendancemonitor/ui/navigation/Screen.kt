@@ -1,12 +1,7 @@
 package com.vnrvjiet.attendancemonitor.ui.navigation
 
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Dashboard
-import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Login
-import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material.icons.filled.*
 import androidx.compose.ui.graphics.vector.ImageVector
 
 sealed class Screen(val route: String, val title: String, val icon: ImageVector) {
@@ -16,4 +11,5 @@ sealed class Screen(val route: String, val title: String, val icon: ImageVector)
     object Statistics : Screen("statistics", "Statistics", Icons.Default.Info)
     object Notifications : Screen("notifications", "Notifications", Icons.Default.Notifications)
     object SyncStatus : Screen("sync_status", "Sync Status", Icons.Default.Sync)
+    object Settings : Screen("settings", "Settings", Icons.Default.Settings)
 }
