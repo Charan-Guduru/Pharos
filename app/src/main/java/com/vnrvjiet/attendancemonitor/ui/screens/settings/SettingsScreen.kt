@@ -2,6 +2,7 @@ package com.vnrvjiet.attendancemonitor.ui.screens.settings
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -15,12 +16,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 
@@ -32,6 +33,7 @@ fun SettingsScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var username by remember(uiState.username) { mutableStateOf(uiState.username) }
+    var dob by remember(uiState.dob) { mutableStateOf(uiState.dob) }
     var password by remember { mutableStateOf(viewModel.getPassword()) }
     var passwordVisible by remember { mutableStateOf(false) }
 
@@ -61,11 +63,26 @@ fun SettingsScreen(
                     value = username,
                     onValueChange = { 
                         username = it
-                        viewModel.updateCredentials(it, password)
+                        viewModel.updateCredentials(it, password, dob)
                     },
                     label = { Text("EduPrime Username") },
                     modifier = Modifier.fillMaxWidth(),
-                    leadingIcon = { Icon(Icons.Default.Person, null) }
+                    leadingIcon = { Icon(Icons.Default.Person, null) },
+                    singleLine = true
+                )
+                
+                Spacer(modifier = Modifier.height(12.dp))
+
+                OutlinedTextField(
+                    value = dob,
+                    onValueChange = { 
+                        dob = it
+                        viewModel.updateCredentials(username, password, it)
+                    },
+                    label = { Text("Date of Birth (DD-MM-YYYY)") },
+                    modifier = Modifier.fillMaxWidth(),
+                    leadingIcon = { Icon(Icons.Default.CalendarToday, null) },
+                    singleLine = true
                 )
                 
                 Spacer(modifier = Modifier.height(12.dp))
@@ -74,7 +91,7 @@ fun SettingsScreen(
                     value = password,
                     onValueChange = { 
                         password = it
-                        viewModel.updateCredentials(username, it)
+                        viewModel.updateCredentials(username, it, dob)
                     },
                     label = { Text("EduPrime Password") },
                     modifier = Modifier.fillMaxWidth(),
@@ -88,8 +105,46 @@ fun SettingsScreen(
                                 contentDescription = null
                             )
                         }
-                    }
+                    },
+                    singleLine = true
                 )
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                Button(
+                    onClick = { viewModel.testEduPrimeLogin() },
+                    modifier = Modifier.fillMaxWidth().height(50.dp),
+                    enabled = !uiState.isTestingLogin,
+                    shape = MaterialTheme.shapes.medium
+                ) {
+                    if (uiState.isTestingLogin) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.onPrimary
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text("Authenticating...")
+                    } else {
+                        Text("Test EduPrime Login")
+                    }
+                }
+
+                uiState.loginTestResult?.let { result ->
+                    Surface(
+                        modifier = Modifier.padding(top = 12.dp).fillMaxWidth(),
+                        color = if (result.contains("✅")) Color(0xFFE8F5E9) else Color(0xFFFFEBEE),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Text(
+                            text = result,
+                            modifier = Modifier.padding(12.dp),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = if (result.contains("✅")) Color(0xFF2E7D32) else Color(0xFFC62828),
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
             }
 
             // SYNC SECTION
@@ -101,12 +156,17 @@ fun SettingsScreen(
                     onCheckedChange = { viewModel.toggleAutoSync(it) }
                 )
                 
-                Text(
-                    text = "Sync Schedule: 10:30, 12:30, 14:30, 16:00, 17:00, 18:00",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.Gray,
-                    modifier = Modifier.padding(top = 8.dp)
-                )
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5)),
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
+                ) {
+                    Text(
+                        text = "Sync Schedule: 10:30, 12:30, 14:30, 16:00, 17:00, 18:00",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.Gray,
+                        modifier = Modifier.padding(12.dp)
+                    )
+                }
             }
 
             // NOTIFICATIONS SECTION
@@ -167,15 +227,17 @@ fun SettingsScreen(
             SettingsSection(title = "About") {
                 AboutItem("App Version", "1.0.0")
                 AboutItem("Developer", "VNR VJIET Student")
-                TextButton(onClick = {}, modifier = Modifier.padding(start = 0.dp)) {
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedButton(onClick = {}, modifier = Modifier.fillMaxWidth()) {
                     Text("Privacy Policy")
                 }
-                TextButton(onClick = {}, modifier = Modifier.padding(start = 0.dp)) {
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedButton(onClick = {}, modifier = Modifier.fillMaxWidth()) {
                     Text("Open Source Licenses")
                 }
             }
             
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(48.dp))
         }
     }
 }

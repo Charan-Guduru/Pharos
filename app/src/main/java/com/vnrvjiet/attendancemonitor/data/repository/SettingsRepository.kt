@@ -26,11 +26,13 @@ class SettingsRepository(context: Context) {
 
     fun getUsername(): String = prefs.getString("eduprime_user", "") ?: ""
     fun getPassword(): String = prefs.getString("eduprime_pass", "") ?: ""
+    fun getDob(): String = prefs.getString("eduprime_dob", "") ?: ""
 
-    fun saveCredentials(user: String, pass: String) {
+    fun saveCredentials(user: String, pass: String, dob: String = "") {
         prefs.edit().apply {
             putString("eduprime_user", user)
             putString("eduprime_pass", pass)
+            if (dob.isNotEmpty()) putString("eduprime_dob", dob)
         }.apply()
     }
 

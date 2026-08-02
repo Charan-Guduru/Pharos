@@ -37,6 +37,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -64,7 +65,11 @@ dependencies {
     // Retrofit
     implementation(libs.retrofit)
     implementation(libs.retrofit.gson)
+    implementation(libs.retrofit.scalars)
     implementation(libs.okhttp.logging)
+    
+    // HTML Parsing
+    implementation(libs.jsoup)
     
     // WorkManager
     implementation(libs.androidx.work.runtime.ktx)
