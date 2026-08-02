@@ -6,7 +6,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -21,7 +20,10 @@ fun SummaryCard(
             .fillMaxWidth()
             .padding(vertical = 8.dp),
         shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF004BA0))
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primary,
+            contentColor = MaterialTheme.colorScheme.onPrimary
+        )
     ) {
         Column(modifier = Modifier.padding(24.dp)) {
             Row(
@@ -31,19 +33,21 @@ fun SummaryCard(
             ) {
                 Text(
                     text = "Overall Attendance",
-                    color = Color.White.copy(alpha = 0.8f),
+                    color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f),
                     style = MaterialTheme.typography.labelLarge
                 )
                 Surface(
-                    color = Color.White.copy(alpha = 0.2f),
+                    color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.2f),
                     shape = RoundedCornerShape(12.dp)
                 ) {
                     Text(
                         text = "SAFE",
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                        color = Color.White,
+                        color = MaterialTheme.colorScheme.onPrimary,
                         fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        softWrap = false
                     )
                 }
             }
@@ -56,13 +60,13 @@ fun SummaryCard(
                 }
                 Text(
                     text = displayPercentage,
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.onPrimary,
                     fontSize = 48.sp,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
                     text = "%",
-                    color = Color.White.copy(alpha = 0.8f),
+                    color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f),
                     fontSize = 24.sp,
                     modifier = Modifier.padding(bottom = 8.dp, start = 4.dp)
                 )
@@ -71,12 +75,12 @@ fun SummaryCard(
             Spacer(modifier = Modifier.height(16.dp))
             
             LinearProgressIndicator(
-                progress = percentage / 100f,
+                progress = { percentage / 100f },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(8.dp),
-                color = Color.White,
-                trackColor = Color.White.copy(alpha = 0.2f),
+                color = MaterialTheme.colorScheme.onPrimary,
+                trackColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.2f),
                 strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
             )
 
@@ -85,7 +89,7 @@ fun SummaryCard(
             Text(
                 text = "+$classesLead classes lead",
                 modifier = Modifier.align(Alignment.End),
-                color = Color.White.copy(alpha = 0.9f),
+                color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.9f),
                 style = MaterialTheme.typography.labelMedium
             )
         }

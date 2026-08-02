@@ -1,6 +1,7 @@
 package com.vnrvjiet.attendancemonitor.data.repository
 
 import android.content.Context
+import android.content.SharedPreferences
 import com.vnrvjiet.attendancemonitor.util.SecurePreferences
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -24,11 +25,35 @@ class SettingsRepository(context: Context) {
     private val _theme = MutableStateFlow(prefs.getString("app_theme", "System") ?: "System")
     val theme: StateFlow<String> = _theme.asStateFlow()
 
+    private val prefListener = SharedPreferences.OnSharedPreferenceChangeListener { sharedPrefs, key ->
+        when (key) {
+            "auto_sync" -> _autoSync.value = sharedPrefs.getBoolean(key, true)
+            "alerts_attendance" -> _attendanceAlerts.value = sharedPrefs.getBoolean(key, true)
+            "alerts_milestone" -> _milestoneAlerts.value = sharedPrefs.getBoolean(key, true)
+            "alerts_mismatch" -> _mismatchAlerts.value = sharedPrefs.getBoolean(key, true)
+            "app_theme" -> _theme.value = sharedPrefs.getString(key, "System") ?: "System"
+            "last_verified" -> _lastVerified.value = sharedPrefs.getLong(key, 0L)
+            "last_backup_at" -> _lastBackupAt.value = sharedPrefs.getLong(key, 0L)
+            "last_auto_sync_at" -> _lastAutoSyncAt.value = sharedPrefs.getLong(key, 0L)
+            "last_manual_sync_at" -> _lastManualSyncAt.value = sharedPrefs.getLong(key, 0L)
+        }
+    }
+
+    init {
+        prefs.registerOnSharedPreferenceChangeListener(prefListener)
+    }
+
     private val _lastVerified = MutableStateFlow(prefs.getLong("last_verified", 0L))
     val lastVerified: StateFlow<Long> = _lastVerified.asStateFlow()
 
     private val _lastBackupAt = MutableStateFlow(prefs.getLong("last_backup_at", 0L))
     val lastBackupAt: StateFlow<Long> = _lastBackupAt.asStateFlow()
+
+    private val _lastAutoSyncAt = MutableStateFlow(prefs.getLong("last_auto_sync_at", 0L))
+    val lastAutoSyncAt: StateFlow<Long> = _lastAutoSyncAt.asStateFlow()
+
+    private val _lastManualSyncAt = MutableStateFlow(prefs.getLong("last_manual_sync_at", 0L))
+    val lastManualSyncAt: StateFlow<Long> = _lastManualSyncAt.asStateFlow()
 
     fun getUsername(): String = prefs.getString("eduprime_user", "") ?: ""
     fun getPassword(): String = prefs.getString("eduprime_pass", "") ?: ""
@@ -53,6 +78,16 @@ class SettingsRepository(context: Context) {
     fun setLastBackupAt(timestamp: Long) {
         prefs.edit().putLong("last_backup_at", timestamp).apply()
         _lastBackupAt.value = timestamp
+    }
+
+    fun setLastAutoSyncAt(timestamp: Long) {
+        prefs.edit().putLong("last_auto_sync_at", timestamp).apply()
+        _lastAutoSyncAt.value = timestamp
+    }
+
+    fun setLastManualSyncAt(timestamp: Long) {
+        prefs.edit().putLong("last_manual_sync_at", timestamp).apply()
+        _lastManualSyncAt.value = timestamp
     }
 
     fun setAutoSync(enabled: Boolean) {

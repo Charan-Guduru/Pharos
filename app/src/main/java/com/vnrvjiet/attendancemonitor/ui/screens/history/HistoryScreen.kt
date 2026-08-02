@@ -29,7 +29,7 @@ fun HistoryScreen(viewModel: HistoryViewModel = viewModel()) {
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color(0xFFF8F9FA))
+                .background(MaterialTheme.colorScheme.surface)
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
             contentPadding = PaddingValues(vertical = 16.dp)
@@ -63,10 +63,23 @@ fun HistoryScreen(viewModel: HistoryViewModel = viewModel()) {
 fun EmptyHistoryState() {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(Icons.Default.History, contentDescription = null, modifier = Modifier.size(64.dp), tint = Color.LightGray)
+            Icon(
+                Icons.Default.History, 
+                contentDescription = null, 
+                modifier = Modifier.size(64.dp), 
+                tint = MaterialTheme.colorScheme.outline
+            )
             Spacer(modifier = Modifier.height(16.dp))
-            Text("No attendance records found", color = Color.Gray)
-            Text("Go to Dashboard to record attendance", style = MaterialTheme.typography.bodySmall, color = Color.LightGray)
+            Text(
+                "No attendance records found", 
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodyLarge
+            )
+            Text(
+                "Go to Dashboard to record attendance", 
+                style = MaterialTheme.typography.bodySmall, 
+                color = MaterialTheme.colorScheme.outline
+            )
         }
     }
 }
@@ -76,7 +89,12 @@ fun SectionHeader(icon: androidx.compose.ui.graphics.vector.ImageVector, title: 
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 8.dp)) {
         Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
         Spacer(modifier = Modifier.width(8.dp))
-        Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        Text(
+            title, 
+            style = MaterialTheme.typography.titleMedium, 
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface
+        )
     }
 }
 
@@ -107,20 +125,29 @@ fun AttendanceHistoryCard(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Column {
-                    Text(time, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
-                    Text(date, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                    Text(time, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(date, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                Icon(Icons.Default.Edit, null, Modifier.size(18.dp), tint = Color.Gray)
+                Icon(Icons.Default.Edit, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Spacer(modifier = Modifier.height(4.dp))
-            Text(subject, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-            Text(faculty, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+            Text(
+                subject, 
+                style = MaterialTheme.typography.titleLarge, 
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                faculty, 
+                style = MaterialTheme.typography.bodySmall, 
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
             
             Spacer(modifier = Modifier.height(12.dp))
             
@@ -128,22 +155,43 @@ fun AttendanceHistoryCard(
                 val statusColor = getStatusColor(status)
                 Surface(
                     color = statusColor.copy(alpha = 0.1f),
-                    shape = MaterialTheme.shapes.small
+                    shape = MaterialTheme.shapes.small,
+                    modifier = Modifier.widthIn(min = 60.dp)
                 ) {
                     Row(modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.CheckCircle, null, Modifier.size(14.dp), tint = statusColor)
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text(status.name, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = statusColor)
+                        Text(
+                            text = status.name, 
+                            fontSize = 10.sp, 
+                            fontWeight = FontWeight.ExtraBold, 
+                            color = statusColor,
+                            maxLines = 1,
+                            softWrap = false
+                        )
                     }
                 }
                 Spacer(modifier = Modifier.width(12.dp))
-                Text(syncStatus, style = MaterialTheme.typography.labelSmall, color = if (syncStatus == "SYNCED") Color(0xFF4CAF50) else Color.Gray)
+                Text(
+                    syncStatus, 
+                    style = MaterialTheme.typography.labelSmall, 
+                    color = if (syncStatus == "SYNCED") Color(0xFF4CAF50) else MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
 
             if (!remarks.isNullOrEmpty()) {
                 Spacer(modifier = Modifier.height(8.dp))
-                Surface(color = Color(0xFFF5F5F5), shape = MaterialTheme.shapes.small, modifier = Modifier.fillMaxWidth()) {
-                    Text(text = remarks, modifier = Modifier.padding(8.dp), style = MaterialTheme.typography.bodySmall)
+                Surface(
+                    color = MaterialTheme.colorScheme.surfaceVariant, 
+                    shape = MaterialTheme.shapes.small, 
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = remarks, 
+                        modifier = Modifier.padding(8.dp), 
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
         }
@@ -155,6 +203,6 @@ fun getStatusColor(status: AttendanceStatus): Color {
         AttendanceStatus.PRESENT -> Color(0xFF4CAF50)
         AttendanceStatus.ABSENT -> Color(0xFFF44336)
         AttendanceStatus.BUNK -> Color(0xFFFF9800)
-        else -> Color.Gray
+        else -> Color(0xFF9E9E9E)
     }
 }

@@ -6,6 +6,7 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.vnrvjiet.attendancemonitor.data.model.AttendanceStatus
 import com.vnrvjiet.attendancemonitor.data.model.SyncStatus
+import com.vnrvjiet.attendancemonitor.data.model.VerificationState
 
 @Entity(
     tableName = "attendance_records",
@@ -26,6 +27,7 @@ data class AttendanceRecordEntity(
     val timetableEntryId: Long,
     val status: AttendanceStatus,
     val syncStatus: SyncStatus,
+    val verificationState: VerificationState = VerificationState.PENDING,
     val remarks: String?,
     val lastModified: Long
 )

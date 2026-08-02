@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.vnrvjiet.attendancemonitor.ui.theme.*
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -71,7 +72,7 @@ fun SettingsScreen(
 
     LaunchedEffect(backupState.message) {
         backupState.message?.let {
-            // Show toast or Snackbar (simplified to toast for this task)
+            // Show toast or Snack bar (simplified to toast for this task)
             android.widget.Toast.makeText(context, it, android.widget.Toast.LENGTH_LONG).show()
             backupViewModel.clearMessage()
         }
@@ -159,9 +160,9 @@ fun SettingsScreen(
 
                     Surface(
                         modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
-                        color = Color(0xFFE8F5E9),
+                        color = StatusVerified.copy(alpha = 0.1f),
                         shape = RoundedCornerShape(12.dp),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFC8E6C9))
+                        border = androidx.compose.foundation.BorderStroke(1.dp, StatusVerified.copy(alpha = 0.2f))
                     ) {
                         Row(
                             modifier = Modifier.padding(16.dp),
@@ -170,7 +171,7 @@ fun SettingsScreen(
                             Icon(
                                 Icons.Default.CheckCircle,
                                 contentDescription = null,
-                                tint = Color(0xFF2E7D32),
+                                tint = StatusVerified,
                                 modifier = Modifier.size(32.dp)
                             )
                             Spacer(modifier = Modifier.width(16.dp))
@@ -178,19 +179,20 @@ fun SettingsScreen(
                                 Text(
                                     "🟢 EduPrime Verified",
                                     fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF2E7D32),
+                                    color = StatusVerified,
                                     fontSize = 16.sp
                                 )
                                 Text(
                                     "Last Verified:",
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = Color.Gray,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.padding(top = 4.dp)
                                 )
                                 Text(
                                     "$dateStr at $timeStr",
                                     style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = FontWeight.Medium
+                                    fontWeight = FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.onSurface
                                 )
                             }
                         }
@@ -259,13 +261,13 @@ fun SettingsScreen(
                 )
                 
                 Card(
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5)),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
                     modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
                 ) {
                     Text(
-                        text = "Sync Schedule: 10:30, 12:30, 14:30, 16:00, 17:00, 18:00",
+                        text = "Sync Schedule: 09:00 AM, 10:00 AM, 12:30 PM, 02:00 PM, 05:00 PM",
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color.Gray,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(12.dp)
                     )
                 }
@@ -297,16 +299,16 @@ fun SettingsScreen(
             SettingsSection(title = "Backup & Restore") {
                 Card(
                     modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5))
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.History, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(16.dp))
+                            Icon(Icons.Default.History, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
                                 text = "Last Backup: ${backupState.lastBackupFormatted}",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = Color.Gray
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
@@ -435,8 +437,16 @@ fun SettingsSwitchItem(
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(text = title, style = MaterialTheme.typography.bodyLarge)
-            Text(text = subtitle, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+            Text(
+                text = title, 
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                text = subtitle, 
+                style = MaterialTheme.typography.bodySmall, 
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
         Switch(checked = checked, onCheckedChange = onCheckedChange)
     }
@@ -448,7 +458,15 @@ fun AboutItem(label: String, value: String) {
         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Text(text = label, style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
-        Text(text = value, style = MaterialTheme.typography.bodyMedium)
+        Text(
+            text = label, 
+            style = MaterialTheme.typography.bodyMedium, 
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            text = value, 
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface
+        )
     }
 }

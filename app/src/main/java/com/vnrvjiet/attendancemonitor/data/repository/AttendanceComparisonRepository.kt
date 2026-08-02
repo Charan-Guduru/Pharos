@@ -9,6 +9,7 @@ import com.vnrvjiet.attendancemonitor.data.model.ComparisonResult
 import com.vnrvjiet.attendancemonitor.data.model.ComparisonStatus
 import com.vnrvjiet.attendancemonitor.data.model.EduPrimeAttendanceRecord
 import com.vnrvjiet.attendancemonitor.data.model.MatchStatus
+import com.vnrvjiet.attendancemonitor.data.model.VerificationState
 
 class AttendanceComparisonRepository {
     private val TAG = "AttendanceComparison"
@@ -18,7 +19,7 @@ class AttendanceComparisonRepository {
         timetable: List<TimetableEntryEntity>,
         subjects: List<SubjectEntity>,
         eduPrimeData: List<EduPrimeAttendanceRecord>
-    ): List<ComparisonResult> {
+    ): Pair<List<ComparisonResult>, List<AttendanceRecordEntity>> {
         Log.d(TAG, "Starting comparison for ${eduPrimeData.size} subjects")
         
         // 1. Map timetable entry ID to subject code
@@ -27,8 +28,55 @@ class AttendanceComparisonRepository {
             entry.id to (subject?.subjectCode ?: "UNKNOWN")
         }
 
-        // 2. Aggregate local Room records by subject code
-        val localAggregates = localRecords.groupBy { record ->
+        // 2. Budgeting logic for VerificationState
+        val updatedLocalRecords = mutableListOf<AttendanceRecordEntity>()
+        val budgets = eduPrimeData.associateBy { it.subjectCode }.toMutableMap()
+        
+        // Sort local records chronologically per subject
+        val sortedLocal = localRecords.sortedBy { it.date }
+        val subjectConsumption = mutableMapOf<String, Int>() // Track index of record per subject
+
+        sortedLocal.forEach { record ->
+            val code = timetableToSubjectCode[record.timetableEntryId] ?: "UNKNOWN"
+            val remote = budgets[code]
+            
+            if (remote == null) {
+                updatedLocalRecords.add(record.copy(verificationState = VerificationState.PENDING))
+                return@forEach
+            }
+
+            val index = subjectConsumption.getOrDefault(code, 0)
+            subjectConsumption[code] = index + 1
+
+            val newState = when {
+                // If portal has recorded fewer classes than our local index (1-based)
+                remote.conductedClasses < (index + 1) -> VerificationState.PENDING
+                
+                // If we were present and remote attended count covers this record
+                record.status == AttendanceStatus.PRESENT -> {
+                    // This logic is simplified for the budget method
+                    // In a real cumulative system, we check if attended > 0
+                    // Since we can't be sure which specific slot was attended, 
+                    // we assume chronological verification.
+                    val attendedRem = remote.attendedClasses - (sortedLocal.filter { it.date <= record.date && timetableToSubjectCode[it.timetableEntryId] == code && it.status == AttendanceStatus.PRESENT }.size - 1)
+                    
+                    if (attendedRem > 0) VerificationState.VERIFIED else VerificationState.MISMATCH
+                }
+                
+                // Case 4: Recorded BUNK but portal says PRESENT
+                record.status == AttendanceStatus.BUNK -> {
+                    val attendedAtThatPoint = sortedLocal.filter { it.date <= record.date && timetableToSubjectCode[it.timetableEntryId] == code && it.status == AttendanceStatus.PRESENT }.size
+                    if (remote.attendedClasses > attendedAtThatPoint) VerificationState.VERIFIED else VerificationState.VERIFIED // Logic: Bunked but granted = Verified (Unexpected)
+                }
+                
+                else -> VerificationState.VERIFIED // For Absent/other that match portal's lack of attendance
+            }
+            
+            updatedLocalRecords.add(record.copy(verificationState = newState))
+        }
+
+        // 3. Generate UI Comparison Results (using current simple logic)
+        val localAggregates = updatedLocalRecords.groupBy { record ->
             timetableToSubjectCode[record.timetableEntryId] ?: "UNKNOWN"
         }.mapValues { (_, records) ->
             val attended = records.count { it.status == AttendanceStatus.PRESENT }
@@ -36,8 +84,7 @@ class AttendanceComparisonRepository {
             Pair(attended, conducted)
         }
 
-        // 3. Compare with EduPrime data
-        return eduPrimeData.map { remote ->
+        val results = eduPrimeData.map { remote ->
             val local = localAggregates[remote.subjectCode] ?: Pair(0, 0)
             
             val prevAttended = local.first
@@ -54,14 +101,9 @@ class AttendanceComparisonRepository {
 
             val matchStatus = if (prevConducted == currConducted && prevAttended == currAttended) {
                 MatchStatus.MATCH
-            } else if (prevConducted > currConducted) {
-                // If local has more records than EduPrime, it's a definite mismatch or out-of-sync
-                MatchStatus.MISMATCH
             } else {
                 MatchStatus.MISMATCH
             }
-
-            Log.d(TAG, "Subject: ${remote.subjectCode}, Previous: ($prevAttended/$prevConducted), Current: ($currAttended/$currConducted), Result: $comparisonStatus")
 
             ComparisonResult(
                 subjectCode = remote.subjectCode,
@@ -73,5 +115,7 @@ class AttendanceComparisonRepository {
                 matchStatus = matchStatus
             )
         }
+        
+        return Pair(results, updatedLocalRecords)
     }
 }

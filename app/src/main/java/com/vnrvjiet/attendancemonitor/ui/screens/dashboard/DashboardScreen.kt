@@ -68,7 +68,7 @@ fun DashboardScreen(
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF8F9FA))
+            .background(MaterialTheme.colorScheme.surface)
             .padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
         contentPadding = PaddingValues(top = 8.dp, bottom = 100.dp)
@@ -100,10 +100,13 @@ fun DashboardScreen(
                 Card(
                     modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
                     shape = RoundedCornerShape(24.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFF616161))
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 ) {
                     Box(modifier = Modifier.padding(24.dp).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                        Text("Not Synced", color = Color.White, fontWeight = FontWeight.Bold)
+                        Text("Not Synced", fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -126,13 +129,13 @@ fun DashboardScreen(
                     days.forEachIndexed { index, day ->
                         Surface(
                             shape = RoundedCornerShape(8.dp),
-                            color = if (index == 0) Color(0xFF0D47A1) else Color.Transparent,
+                            color = if (index == 0) MaterialTheme.colorScheme.primary else Color.Transparent,
                             modifier = Modifier.size(32.dp)
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 Text(
                                     text = day,
-                                    color = if (index == 0) Color.White else Color.Gray,
+                                    color = if (index == 0) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.Bold
                                 )
@@ -148,15 +151,25 @@ fun DashboardScreen(
                 Card(
                     modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp),
                     colors = CardDefaults.cardColors(containerColor = Color.Transparent),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, Color.LightGray)
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
                 ) {
                     Column(
                         modifier = Modifier.padding(32.dp).fillMaxWidth(),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Icon(Icons.Default.Notifications, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(48.dp))
+                        Icon(
+                            Icons.Default.Notifications, 
+                            contentDescription = null, 
+                            tint = MaterialTheme.colorScheme.outline, 
+                            modifier = Modifier.size(64.dp)
+                        )
                         Spacer(modifier = Modifier.height(16.dp))
-                        Text("No classes scheduled today.", color = Color.Gray, fontWeight = FontWeight.Medium)
+                        Text(
+                            "No classes scheduled today.", 
+                            color = MaterialTheme.colorScheme.onSurfaceVariant, 
+                            fontWeight = FontWeight.Medium,
+                            style = MaterialTheme.typography.bodyLarge
+                        )
                     }
                 }
             }

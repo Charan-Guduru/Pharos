@@ -3,14 +3,17 @@ package com.vnrvjiet.attendancemonitor.ui.screens.settings
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.work.*
 import com.vnrvjiet.attendancemonitor.data.model.LoginResult
 import com.vnrvjiet.attendancemonitor.data.repository.EduPrimeRepository
 import com.vnrvjiet.attendancemonitor.data.repository.SettingsRepository
+import com.vnrvjiet.attendancemonitor.worker.AttendanceSyncWorker
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.util.*
+import java.util.concurrent.TimeUnit
 
 data class SettingsUiState(
     val username: String = "",
@@ -118,7 +121,28 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     fun getPassword(): String = repository.getPassword()
 
-    fun toggleAutoSync(enabled: Boolean) = repository.setAutoSync(enabled)
+    fun toggleAutoSync(enabled: Boolean) {
+        repository.setAutoSync(enabled)
+        val workManager = WorkManager.getInstance(getApplication())
+        if (enabled) {
+            val constraints = Constraints.Builder()
+                .setRequiredNetworkType(NetworkType.CONNECTED)
+                .build()
+
+            val syncRequest = PeriodicWorkRequestBuilder<AttendanceSyncWorker>(1, TimeUnit.HOURS)
+                .setConstraints(constraints)
+                .addTag("AttendanceSync")
+                .build()
+
+            workManager.enqueueUniquePeriodicWork(
+                "AttendanceSync",
+                ExistingPeriodicWorkPolicy.KEEP,
+                syncRequest
+            )
+        } else {
+            workManager.cancelUniqueWork("AttendanceSync")
+        }
+    }
     fun toggleAttendanceAlerts(enabled: Boolean) = repository.setAttendanceAlerts(enabled)
     fun toggleMilestoneAlerts(enabled: Boolean) = repository.setMilestoneAlerts(enabled)
     fun toggleMismatchAlerts(enabled: Boolean) = repository.setMismatchAlerts(enabled)

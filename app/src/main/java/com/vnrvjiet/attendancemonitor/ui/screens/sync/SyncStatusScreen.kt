@@ -19,6 +19,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import java.text.SimpleDateFormat
+import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -28,6 +30,8 @@ fun SyncStatusScreen(
     viewModel: SyncStatusViewModel = viewModel()
 ) {
     val uiState by viewModel.fullUiState.collectAsStateWithLifecycle()
+    val lastManual by viewModel.lastManualSyncAt.collectAsStateWithLifecycle()
+    val lastAuto by viewModel.lastAutoSyncAt.collectAsStateWithLifecycle()
 
     LaunchedEffect(uiState.navigateToSetup) {
         if (uiState.navigateToSetup) {
@@ -57,7 +61,7 @@ fun SyncStatusScreen(
         ) {
             Surface(
                 shape = CircleShape,
-                color = if (uiState.error != null) Color(0xFFFFEBEE) else Color(0xFFE8F5E9),
+                color = if (uiState.error != null) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f),
                 modifier = Modifier.size(120.dp)
             ) {
                 Box(contentAlignment = Alignment.Center) {
@@ -68,7 +72,7 @@ fun SyncStatusScreen(
                             if (uiState.error != null) Icons.Default.Warning else Icons.Default.CheckCircle,
                             contentDescription = null,
                             modifier = Modifier.size(64.dp),
-                            tint = if (uiState.error != null) Color.Red else Color(0xFF2E7D32)
+                            tint = if (uiState.error != null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
                         )
                     }
                 }
@@ -82,17 +86,22 @@ fun SyncStatusScreen(
                     else -> "Synced Successfully"
                 },
                 fontSize = 24.sp,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
             )
             Text(
                 text = uiState.error ?: "Your timetable and attendance are up to date.",
-                color = Color.Gray,
-                modifier = Modifier.padding(top = 8.dp)
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 8.dp),
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
             )
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            SyncInfoCard(lastSync = uiState.lastSyncFormatted)
+            SyncInfoCard(
+                lastManual = formatTimestamp(lastManual),
+                lastAuto = formatTimestamp(lastAuto)
+            )
 
             Spacer(modifier = Modifier.weight(1f))
 
@@ -111,16 +120,18 @@ fun SyncStatusScreen(
 }
 
 @Composable
-fun SyncInfoCard(lastSync: String) {
+fun SyncInfoCard(lastManual: String, lastAuto: String) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            SyncDetailItem("LAST SYNC", lastSync)
-            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = Color(0xFFF5F5F5))
-            SyncDetailItem("NEXT SCHEDULED", "Manual Only")
+            SyncDetailItem("LAST MANUAL SYNC", lastManual)
+            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+            SyncDetailItem("LAST AUTO SYNC", lastAuto)
+            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+            SyncDetailItem("NEXT SCHEDULED", "Calculated Windows")
         }
     }
 }
@@ -128,7 +139,13 @@ fun SyncInfoCard(lastSync: String) {
 @Composable
 fun SyncDetailItem(label: String, value: String) {
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-        Text(text = label, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
-        Text(text = value, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+        Text(text = label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(text = value, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurface)
     }
+}
+
+private fun formatTimestamp(timestamp: Long): String {
+    if (timestamp == 0L) return "Never"
+    val sdf = SimpleDateFormat("dd MMM, HH:mm", Locale.getDefault())
+    return sdf.format(Date(timestamp))
 }

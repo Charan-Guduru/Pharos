@@ -25,6 +25,7 @@ class DebugAttendanceViewModel(application: Application) : AndroidViewModel(appl
         eduPrimeRepo,
         db.eduPrimeAttendanceDao(),
         db.subjectMappingDao(),
+        db.notificationDao(),
         settingsRepo
     )
 

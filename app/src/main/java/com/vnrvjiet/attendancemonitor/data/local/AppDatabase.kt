@@ -8,11 +8,13 @@ import androidx.room.TypeConverters
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.vnrvjiet.attendancemonitor.data.local.dao.AttendanceDao
 import com.vnrvjiet.attendancemonitor.data.local.dao.EduPrimeAttendanceDao
+import com.vnrvjiet.attendancemonitor.data.local.dao.NotificationDao
 import com.vnrvjiet.attendancemonitor.data.local.dao.SubjectDao
 import com.vnrvjiet.attendancemonitor.data.local.dao.SubjectMappingDao
 import com.vnrvjiet.attendancemonitor.data.local.dao.TimetableDao
 import com.vnrvjiet.attendancemonitor.data.local.entity.AttendanceRecordEntity
 import com.vnrvjiet.attendancemonitor.data.local.entity.EduPrimeAttendanceEntity
+import com.vnrvjiet.attendancemonitor.data.local.entity.NotificationEntity
 import com.vnrvjiet.attendancemonitor.data.local.entity.SubjectEntity
 import com.vnrvjiet.attendancemonitor.data.local.entity.SubjectMappingEntity
 import com.vnrvjiet.attendancemonitor.data.local.entity.TimetableEntryEntity
@@ -26,9 +28,10 @@ import kotlinx.coroutines.launch
         TimetableEntryEntity::class,
         AttendanceRecordEntity::class,
         EduPrimeAttendanceEntity::class,
-        SubjectMappingEntity::class
+        SubjectMappingEntity::class,
+        NotificationEntity::class
     ],
-    version = 3,
+    version = 5,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -38,6 +41,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun attendanceDao(): AttendanceDao
     abstract fun eduPrimeAttendanceDao(): EduPrimeAttendanceDao
     abstract fun subjectMappingDao(): SubjectMappingDao
+    abstract fun notificationDao(): NotificationDao
 
     companion object {
         @Volatile

@@ -26,13 +26,21 @@ class SyncStatusViewModel(application: Application) : AndroidViewModel(applicati
         EduPrimeRepository(),
         db.eduPrimeAttendanceDao(),
         db.subjectMappingDao(),
+        db.notificationDao(),
         settingsRepo
     )
 
-    val uiState: StateFlow<SyncUiState> = settingsRepo.lastVerified.map { timestamp ->
+    val lastManualSyncAt = settingsRepo.lastManualSyncAt
+    val lastAutoSyncAt = settingsRepo.lastAutoSyncAt
+
+    val uiState: StateFlow<SyncUiState> = combine(
+        lastManualSyncAt,
+        lastAutoSyncAt
+    ) { manual: Long, auto: Long ->
+        val lastSync = if (manual > auto) manual else auto
         SyncUiState(
-            lastSyncFormatted = formatLastSync(timestamp),
-            success = timestamp > 0
+            lastSyncFormatted = formatLastSync(lastSync),
+            success = lastSync > 0L
         )
     }.stateIn(
         scope = viewModelScope,
@@ -57,6 +65,7 @@ class SyncStatusViewModel(application: Application) : AndroidViewModel(applicati
             
             val result = syncRepo.performSync()
             result.onSuccess { hasMissing ->
+                settingsRepo.setLastManualSyncAt(System.currentTimeMillis())
                 if (hasMissing) {
                     _navigateToSetup.value = true
                 }

@@ -18,10 +18,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.vnrvjiet.attendancemonitor.data.model.ComparisonResult
-import com.vnrvjiet.attendancemonitor.data.model.ComparisonStatus
-import com.vnrvjiet.attendancemonitor.data.model.EduPrimeAttendanceRecord
-import com.vnrvjiet.attendancemonitor.data.model.MatchStatus
+import com.vnrvjiet.attendancemonitor.data.model.*
+import com.vnrvjiet.attendancemonitor.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -151,13 +149,15 @@ fun LoadingIndicator(message: String) {
 fun ComparisonItem(result: ComparisonResult) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
                 text = "Subject: ${result.subjectCode}",
                 style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
             )
             
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
@@ -168,15 +168,23 @@ fun ComparisonItem(result: ComparisonResult) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column {
-                    Text("Local (Old)", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
-                    Text("${result.prevAttended} / ${result.prevConducted}", fontWeight = FontWeight.Medium)
+                    Text("Local (Old)", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        "${result.prevAttended} / ${result.prevConducted}", 
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
                 }
                 
-                Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(16.dp))
+                Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = MaterialTheme.colorScheme.outline, modifier = Modifier.size(16.dp))
                 
                 Column(horizontalAlignment = Alignment.End) {
-                    Text("EduPrime (New)", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
-                    Text("${result.currAttended} / ${result.currConducted}", fontWeight = FontWeight.Medium)
+                    Text("EduPrime (New)", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        "${result.currAttended} / ${result.currConducted}", 
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
                 }
             }
             
@@ -185,7 +193,7 @@ fun ComparisonItem(result: ComparisonResult) {
             val statusColor = when (result.matchStatus) {
                 MatchStatus.MATCH -> Color(0xFF2E7D32)
                 MatchStatus.MISMATCH -> Color.Red
-                MatchStatus.UNKNOWN -> Color.Gray
+                MatchStatus.UNKNOWN -> MaterialTheme.colorScheme.outline
             }
             
             Surface(
@@ -197,7 +205,9 @@ fun ComparisonItem(result: ComparisonResult) {
                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                     style = MaterialTheme.typography.labelSmall,
                     color = statusColor,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    softWrap = false
                 )
             }
         }
@@ -208,18 +218,20 @@ fun ComparisonItem(result: ComparisonResult) {
 fun AttendanceItem(record: EduPrimeAttendanceRecord) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
                 text = record.subjectName,
                 style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
             )
             Text(
                 text = record.subjectCode,
                 style = MaterialTheme.typography.bodySmall,
-                color = Color.Gray
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
@@ -229,12 +241,20 @@ fun AttendanceItem(record: EduPrimeAttendanceRecord) {
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Column {
-                    Text("Conducted", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
-                    Text("${record.conductedClasses}", fontWeight = FontWeight.Medium)
+                    Text("Conducted", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        "${record.conductedClasses}", 
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
                 }
                 Column {
-                    Text("Attended", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
-                    Text("${record.attendedClasses}", fontWeight = FontWeight.Medium)
+                    Text("Attended", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        "${record.attendedClasses}", 
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
                 }
                 Column(horizontalAlignment = Alignment.End) {
                     val formattedPercentage = if (record.attendancePercentage % 1 == 0.0) {
@@ -242,10 +262,10 @@ fun AttendanceItem(record: EduPrimeAttendanceRecord) {
                     } else {
                         "%.2f".format(record.attendancePercentage)
                     }
-                    Text("Percentage", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                    Text("Percentage", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(
                         text = "$formattedPercentage%",
-                        color = if (record.attendancePercentage < 75) Color.Red else Color(0xFF2E7D32),
+                        color = if (record.attendancePercentage < 75) StatusMismatch else StatusVerified,
                         fontWeight = FontWeight.Bold,
                         fontSize = 18.sp
                     )
@@ -262,9 +282,14 @@ fun EmptyState(message: String) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Icon(Icons.Default.Warning, contentDescription = null, modifier = Modifier.size(48.dp), tint = Color.Gray)
+        Icon(
+            Icons.Default.Warning, 
+            contentDescription = null, 
+            modifier = Modifier.size(48.dp), 
+            tint = MaterialTheme.colorScheme.outline
+        )
         Spacer(modifier = Modifier.height(16.dp))
-        Text(message, color = Color.Gray)
+        Text(message, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 

@@ -20,6 +20,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.vnrvjiet.attendancemonitor.data.model.AttendanceStatus
+import com.vnrvjiet.attendancemonitor.ui.theme.*
 
 @Composable
 fun AttendanceCard(
@@ -40,7 +41,7 @@ fun AttendanceCard(
             .fillMaxWidth()
             .padding(vertical = 6.dp),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(modifier = Modifier.height(IntrinsicSize.Min)) {
@@ -61,13 +62,13 @@ fun AttendanceCard(
                         Text(
                             text = time,
                             style = MaterialTheme.typography.labelMedium,
-                            color = if (isNow) Color.Blue else Color.Gray
+                            color = if (isNow) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         if (isNow) {
                             Text(
                                 text = "NOW",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = Color.Red,
+                                color = MaterialTheme.colorScheme.error,
                                 fontWeight = FontWeight.Bold
                             )
                         }
@@ -115,12 +116,12 @@ fun AttendanceCard(
                 )
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Outlined.LocationOn, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color.Gray)
-                    Text(text = " Room $room", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                    Icon(Icons.Outlined.LocationOn, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(text = " Room $room", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     if (faculty.isNotEmpty() && faculty != "-") {
                         Spacer(modifier = Modifier.width(12.dp))
-                        Icon(Icons.Outlined.Person, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color.Gray)
-                        Text(text = " $faculty", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                        Icon(Icons.Outlined.Person, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(text = " $faculty", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
 
@@ -133,23 +134,23 @@ fun AttendanceCard(
                         AttendanceActionButton(
                             label = "PRESENT",
                             icon = Icons.Default.Done,
-                            containerColor = if (currentStatus == AttendanceStatus.PRESENT) Color(0xFF2E7D32) else Color(0xFFE8F5E9),
-                            contentColor = if (currentStatus == AttendanceStatus.PRESENT) Color.White else Color(0xFF2E7D32),
+                            containerColor = if (currentStatus == AttendanceStatus.PRESENT) StatusVerified else MaterialTheme.colorScheme.surfaceVariant,
+                            contentColor = if (currentStatus == AttendanceStatus.PRESENT) Color.White else StatusVerified,
                             modifier = Modifier.weight(1f),
                             onClick = { onStatusSelected(AttendanceStatus.PRESENT) }
                         )
                         AttendanceActionButton(
                             label = "ABSENT",
                             icon = Icons.Default.Close,
-                            containerColor = if (currentStatus == AttendanceStatus.ABSENT) Color(0xFFC62828) else Color(0xFFFFEBEE),
-                            contentColor = if (currentStatus == AttendanceStatus.ABSENT) Color.White else Color(0xFFC62828),
+                            containerColor = if (currentStatus == AttendanceStatus.ABSENT) StatusMismatch else MaterialTheme.colorScheme.surfaceVariant,
+                            contentColor = if (currentStatus == AttendanceStatus.ABSENT) Color.White else StatusMismatch,
                             modifier = Modifier.weight(1f),
                             onClick = { onStatusSelected(AttendanceStatus.ABSENT) }
                         )
                         AttendanceActionButton(
                             label = "BUNK",
                             icon = Icons.Default.Bolt,
-                            containerColor = if (currentStatus == AttendanceStatus.BUNK) Color(0xFFF9A825) else Color(0xFFFFF8E1),
+                            containerColor = if (currentStatus == AttendanceStatus.BUNK) Color(0xFFF9A825) else MaterialTheme.colorScheme.surfaceVariant,
                             contentColor = if (currentStatus == AttendanceStatus.BUNK) Color.White else Color(0xFFF9A825),
                             modifier = Modifier.weight(1f),
                             onClick = { onStatusSelected(AttendanceStatus.BUNK) }
@@ -157,8 +158,8 @@ fun AttendanceCard(
                         AttendanceActionButton(
                             label = "MORE",
                             icon = Icons.Default.MoreHoriz,
-                            containerColor = Color(0xFFF5F5F5),
-                            contentColor = Color.Gray,
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.weight(1f),
                             onClick = onMoreClick
                         )
@@ -172,29 +173,33 @@ fun AttendanceCard(
 @Composable
 fun StatusChip(status: AttendanceStatus) {
     val (color, label) = when (status) {
-        AttendanceStatus.PRESENT -> Color(0xFF2E7D32) to "PRESENT"
-        AttendanceStatus.ABSENT -> Color(0xFFC62828) to "ABSENT"
+        AttendanceStatus.PRESENT -> StatusVerified to "PRESENT"
+        AttendanceStatus.ABSENT -> StatusMismatch to "ABSENT"
         AttendanceStatus.BUNK -> Color(0xFFF9A825) to "BUNK"
-        AttendanceStatus.HOLIDAY -> Color(0xFF2196F3) to "HOLIDAY"
-        AttendanceStatus.CLASS_CANCELLED -> Color(0xFFEF5350) to "CANCELLED"
-        AttendanceStatus.VOLUNTEER -> Color(0xFF66BB6A) to "VOLUNTEER"
+        AttendanceStatus.HOLIDAY -> StatusUnexpected to "HOLIDAY"
+        AttendanceStatus.CLASS_CANCELLED -> StatusMismatch to "CANCELLED"
+        AttendanceStatus.VOLUNTEER -> StatusVerified to "VOLUNTEER"
         AttendanceStatus.COLLEGE_EVENT -> Color(0xFFFFA726) to "EVENT"
         AttendanceStatus.HACKATHON -> Color(0xFF7E57C2) to "HACKATHON"
         AttendanceStatus.SPORTS_EVENT -> Color(0xFFFF7043) to "SPORTS"
         AttendanceStatus.MEDICAL_LEAVE -> Color(0xFFEC407A) to "MEDICAL"
-        AttendanceStatus.OTHER -> Color.Gray to "OTHER"
+        AttendanceStatus.OTHER -> MaterialTheme.colorScheme.onSurfaceVariant to "OTHER"
     }
     Surface(
         color = color.copy(alpha = 0.1f),
         shape = RoundedCornerShape(16.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, color.copy(alpha = 0.2f))
+        border = androidx.compose.foundation.BorderStroke(1.dp, color.copy(alpha = 0.2f)),
+        modifier = Modifier.widthIn(min = 60.dp)
     ) {
         Text(
             text = label,
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-            fontSize = 10.sp,
-            fontWeight = FontWeight.Bold,
-            color = color
+            fontSize = 11.sp,
+            fontWeight = FontWeight.ExtraBold,
+            color = color,
+            maxLines = 1,
+            softWrap = false,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center
         )
     }
 }
