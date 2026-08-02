@@ -17,8 +17,8 @@ class RoomAttendanceRepository(private val attendanceDao: AttendanceDao) : Atten
         return attendanceDao.getRecordForEntryAndDate(entryId, date)
     }
 
-    override suspend fun insertRecord(record: AttendanceRecordEntity) {
-        attendanceDao.insertRecord(record)
+    override suspend fun insertRecord(record: AttendanceRecordEntity): Long {
+        return attendanceDao.insertRecord(record)
     }
 
     override suspend fun updateRecord(record: AttendanceRecordEntity) {

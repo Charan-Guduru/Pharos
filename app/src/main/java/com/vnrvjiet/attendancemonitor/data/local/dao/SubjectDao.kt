@@ -13,11 +13,14 @@ interface SubjectDao {
     suspend fun insertSubjects(subjects: List<SubjectEntity>)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertSubject(subject: SubjectEntity)
+    suspend fun insertSubject(subject: SubjectEntity): Long
 
     @Update
     suspend fun updateSubject(subject: SubjectEntity)
 
     @Delete
     suspend fun deleteSubject(subject: SubjectEntity)
+
+    @Query("DELETE FROM subjects")
+    suspend fun deleteAll()
 }

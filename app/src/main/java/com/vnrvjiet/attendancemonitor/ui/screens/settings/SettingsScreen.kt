@@ -1,5 +1,7 @@
 package com.vnrvjiet.attendancemonitor.ui.screens.settings
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -16,6 +18,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -31,14 +34,48 @@ import java.util.*
 @Composable
 fun SettingsScreen(
     onBack: () -> Unit,
+    onManageTimetableClick: () -> Unit,
     onDebugAttendanceClick: () -> Unit,
-    viewModel: SettingsViewModel = viewModel()
+    viewModel: SettingsViewModel = viewModel(),
+    backupViewModel: BackupViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val backupState by backupViewModel.fullUiState.collectAsStateWithLifecycle()
+    
+    val context = LocalContext.current
+    
     var username by remember(uiState.username) { mutableStateOf(uiState.username) }
     var dob by remember(uiState.dob) { mutableStateOf(uiState.dob) }
     var password by remember { mutableStateOf(viewModel.getPassword()) }
     var passwordVisible by remember { mutableStateOf(false) }
+
+    val exportLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("application/json"),
+        onResult = { uri ->
+            uri?.let {
+                backupViewModel.exportBackup { json ->
+                    context.contentResolver.openOutputStream(it)?.use { os ->
+                        os.write(json.toByteArray())
+                    }
+                }
+            }
+        }
+    )
+
+    val importLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument(),
+        onResult = { uri ->
+            uri?.let { backupViewModel.importBackup(it) }
+        }
+    )
+
+    LaunchedEffect(backupState.message) {
+        backupState.message?.let {
+            // Show toast or Snackbar (simplified to toast for this task)
+            android.widget.Toast.makeText(context, it, android.widget.Toast.LENGTH_LONG).show()
+            backupViewModel.clearMessage()
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -204,6 +241,16 @@ fun SettingsScreen(
 
             // SYNC SECTION
             SettingsSection(title = "Synchronization") {
+                OutlinedButton(
+                    onClick = onManageTimetableClick,
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                    shape = MaterialTheme.shapes.medium
+                ) {
+                    Icon(Icons.Default.CalendarMonth, contentDescription = null)
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text("Manage Timetable")
+                }
+
                 SettingsSwitchItem(
                     title = "Auto Sync",
                     subtitle = "Automatically fetch attendance from EduPrime",
@@ -244,6 +291,57 @@ fun SettingsScreen(
                     checked = uiState.mismatchAlerts,
                     onCheckedChange = { viewModel.toggleMismatchAlerts(it) }
                 )
+            }
+
+            // BACKUP SECTION
+            SettingsSection(title = "Backup & Restore") {
+                Card(
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5))
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.History, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Last Backup: ${backupState.lastBackupFormatted}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color.Gray
+                            )
+                        }
+                    }
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Button(
+                        onClick = { exportLauncher.launch("AttendanceMonitor_Backup.json") },
+                        modifier = Modifier.weight(1f),
+                        enabled = !backupState.isProcessing,
+                        shape = MaterialTheme.shapes.medium
+                    ) {
+                        Icon(Icons.Default.Upload, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Export")
+                    }
+
+                    OutlinedButton(
+                        onClick = { importLauncher.launch(arrayOf("application/json")) },
+                        modifier = Modifier.weight(1f),
+                        enabled = !backupState.isProcessing,
+                        shape = MaterialTheme.shapes.medium
+                    ) {
+                        Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Import")
+                    }
+                }
+                
+                if (backupState.isProcessing) {
+                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth().padding(top = 8.dp))
+                }
             }
 
             // APPEARANCE SECTION

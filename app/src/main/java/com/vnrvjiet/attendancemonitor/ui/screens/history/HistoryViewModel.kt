@@ -37,19 +37,25 @@ class HistoryViewModel(application: Application) : AndroidViewModel(application)
     val uiState: StateFlow<HistoryUiState> = combine(
         attendanceRepo.getAllRecords(),
         timetableRepo.getAllTimetableEntries(),
-        subjectRepo.getAllSubjects()
-    ) { records, timetable, subjects ->
+        subjectRepo.getAllSubjects(),
+        db.subjectMappingDao().getAllMappings()
+    ) { records, timetable, subjects, mappings ->
         if (records.isEmpty()) {
             HistoryUiState(isEmpty = true)
         } else {
+            val mappingMap = mappings.associate { it.subjectCode to it.subjectName }
+            
             val items = records.mapNotNull { record ->
                 val entry = timetable.find { it.id == record.timetableEntryId }
                 val subject = subjects.find { it.id == entry?.subjectId }
                 if (entry != null && subject != null) {
+                    val mappedSubject = subject.copy(
+                        subjectName = mappingMap[subject.subjectCode] ?: subject.subjectName
+                    )
                     HistoryItem(
                         record = record,
                         entry = entry,
-                        subject = subject,
+                        subject = mappedSubject,
                         formattedDate = dateFormatter.format(Date(record.date))
                     )
                 } else null

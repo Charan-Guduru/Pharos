@@ -14,7 +14,9 @@ import com.vnrvjiet.attendancemonitor.ui.screens.dashboard.DashboardScreen
 import com.vnrvjiet.attendancemonitor.ui.screens.history.HistoryScreen
 import com.vnrvjiet.attendancemonitor.ui.screens.login.LoginScreen
 import com.vnrvjiet.attendancemonitor.ui.screens.notifications.NotificationsScreen
+import com.vnrvjiet.attendancemonitor.ui.screens.setup.SemesterSetupScreen
 import com.vnrvjiet.attendancemonitor.ui.screens.settings.DebugAttendanceScreen
+import com.vnrvjiet.attendancemonitor.ui.screens.timetable.TimetableSetupScreen
 import com.vnrvjiet.attendancemonitor.ui.screens.settings.SettingsScreen
 import com.vnrvjiet.attendancemonitor.ui.screens.statistics.StatisticsScreen
 import com.vnrvjiet.attendancemonitor.ui.screens.sync.SyncStatusScreen
@@ -31,13 +33,17 @@ fun AppNavigation() {
             LoginScreen()
         }
         composable(Screen.Dashboard.route) {
-            DashboardScaffold(navController, Screen.Dashboard)
+            DashboardScaffold(
+                navController = navController,
+                currentScreen = Screen.Dashboard,
+                onNavigateToSetup = { navController.navigate(Screen.TimetableSetup.route) }
+            )
         }
         composable(Screen.History.route) {
-            DashboardScaffold(navController, Screen.History)
+            DashboardScaffold(navController, Screen.History, {})
         }
         composable(Screen.Statistics.route) {
-            DashboardScaffold(navController, Screen.Statistics)
+            DashboardScaffold(navController, Screen.Statistics, {})
         }
         composable(Screen.Notifications.route) {
             NotificationsScreen(
@@ -46,11 +52,27 @@ fun AppNavigation() {
             )
         }
         composable(Screen.SyncStatus.route) {
-            SyncStatusScreen(onBack = { navController.popBackStack() })
+            SyncStatusScreen(
+                onBack = { navController.popBackStack() },
+                onNavigateToSetup = { navController.navigate(Screen.SemesterSetup.route) }
+            )
+        }
+        composable(Screen.SemesterSetup.route) {
+            SemesterSetupScreen(onComplete = { navController.popBackStack() })
+        }
+        composable(Screen.TimetableSetup.route) {
+            val canPop = navController.previousBackStackEntry != null
+            TimetableSetupScreen(
+                onComplete = { 
+                    navController.popBackStack(Screen.Dashboard.route, false) 
+                },
+                onBack = if (canPop) { { navController.popBackStack() } } else null
+            )
         }
         composable(Screen.Settings.route) {
             SettingsScreen(
                 onBack = { navController.popBackStack() },
+                onManageTimetableClick = { navController.navigate(Screen.TimetableSetup.route) },
                 onDebugAttendanceClick = { navController.navigate(Screen.DebugAttendance.route) }
             )
         }
@@ -61,7 +83,11 @@ fun AppNavigation() {
 }
 
 @Composable
-fun DashboardScaffold(navController: androidx.navigation.NavHostController, currentScreen: Screen) {
+fun DashboardScaffold(
+    navController: androidx.navigation.NavHostController,
+    currentScreen: Screen,
+    onNavigateToSetup: () -> Unit = {}
+) {
     Scaffold(
         topBar = {
             DashboardTopBar(
@@ -75,10 +101,10 @@ fun DashboardScaffold(navController: androidx.navigation.NavHostController, curr
     ) { innerPadding ->
         Box(modifier = Modifier.padding(innerPadding)) {
             when (currentScreen) {
-                Screen.Dashboard -> DashboardScreen()
+                Screen.Dashboard -> DashboardScreen(onNavigateToSetup = onNavigateToSetup)
                 Screen.History -> HistoryScreen()
                 Screen.Statistics -> StatisticsScreen()
-                else -> DashboardScreen()
+                else -> DashboardScreen(onNavigateToSetup = {})
             }
         }
     }

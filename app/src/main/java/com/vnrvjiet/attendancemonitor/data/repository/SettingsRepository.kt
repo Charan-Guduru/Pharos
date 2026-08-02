@@ -27,6 +27,9 @@ class SettingsRepository(context: Context) {
     private val _lastVerified = MutableStateFlow(prefs.getLong("last_verified", 0L))
     val lastVerified: StateFlow<Long> = _lastVerified.asStateFlow()
 
+    private val _lastBackupAt = MutableStateFlow(prefs.getLong("last_backup_at", 0L))
+    val lastBackupAt: StateFlow<Long> = _lastBackupAt.asStateFlow()
+
     fun getUsername(): String = prefs.getString("eduprime_user", "") ?: ""
     fun getPassword(): String = prefs.getString("eduprime_pass", "") ?: ""
     fun getDob(): String = prefs.getString("eduprime_dob", "") ?: ""
@@ -45,6 +48,11 @@ class SettingsRepository(context: Context) {
     fun setLastVerified(timestamp: Long) {
         prefs.edit().putLong("last_verified", timestamp).apply()
         _lastVerified.value = timestamp
+    }
+
+    fun setLastBackupAt(timestamp: Long) {
+        prefs.edit().putLong("last_backup_at", timestamp).apply()
+        _lastBackupAt.value = timestamp
     }
 
     fun setAutoSync(enabled: Boolean) {

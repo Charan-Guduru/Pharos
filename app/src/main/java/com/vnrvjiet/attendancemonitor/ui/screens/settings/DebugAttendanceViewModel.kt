@@ -24,6 +24,7 @@ class DebugAttendanceViewModel(application: Application) : AndroidViewModel(appl
     private val syncRepo = SyncRepository(
         eduPrimeRepo,
         db.eduPrimeAttendanceDao(),
+        db.subjectMappingDao(),
         settingsRepo
     )
 

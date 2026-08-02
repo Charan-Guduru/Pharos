@@ -13,7 +13,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.vnrvjiet.attendancemonitor.ui.components.ActivityCard
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
 import com.vnrvjiet.attendancemonitor.ui.components.AttendanceCard
 import com.vnrvjiet.attendancemonitor.ui.components.MoreSituationsSheet
 import com.vnrvjiet.attendancemonitor.ui.components.SummaryCard
@@ -26,9 +27,25 @@ import java.util.Date
 import java.util.Locale
 
 @Composable
-fun DashboardScreen(viewModel: DashboardViewModel = viewModel()) {
+fun DashboardScreen(
+    onNavigateToSetup: () -> Unit,
+    viewModel: DashboardViewModel = viewModel()
+) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     
+    LaunchedEffect(uiState.isLoading, uiState.isTimetableConfigured) {
+        if (!uiState.isLoading && !uiState.isTimetableConfigured) {
+            onNavigateToSetup()
+        }
+    }
+
+    if (uiState.isLoading) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator()
+        }
+        return
+    }
+
     var selectedTab by remember { mutableIntStateOf(0) }
     var showMoreSheet by remember { mutableStateOf(false) }
     var selectedEntryId by remember { mutableStateOf<Long?>(null) }
@@ -121,6 +138,25 @@ fun DashboardScreen(viewModel: DashboardViewModel = viewModel()) {
                                 )
                             }
                         }
+                    }
+                }
+            }
+        }
+
+        if (uiState.timetable.isEmpty()) {
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color.LightGray)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(32.dp).fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Icon(Icons.Default.Notifications, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(48.dp))
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text("No classes scheduled today.", color = Color.Gray, fontWeight = FontWeight.Medium)
                     }
                 }
             }

@@ -7,6 +7,7 @@ import com.vnrvjiet.attendancemonitor.data.local.AppDatabase
 import com.vnrvjiet.attendancemonitor.data.local.entity.AttendanceRecordEntity
 import com.vnrvjiet.attendancemonitor.data.local.entity.EduPrimeAttendanceEntity
 import com.vnrvjiet.attendancemonitor.data.local.entity.SubjectEntity
+import com.vnrvjiet.attendancemonitor.data.local.entity.SubjectMappingEntity
 import com.vnrvjiet.attendancemonitor.data.local.entity.TimetableEntryEntity
 import com.vnrvjiet.attendancemonitor.data.model.ComparisonResult
 import com.vnrvjiet.attendancemonitor.data.repository.*
@@ -30,6 +31,7 @@ class ComparisonViewModel(application: Application) : AndroidViewModel(applicati
     private val syncRepo = SyncRepository(
         eduPrimeRepo,
         database.eduPrimeAttendanceDao(),
+        database.subjectMappingDao(),
         settingsRepo
     )
 
@@ -41,6 +43,7 @@ class ComparisonViewModel(application: Application) : AndroidViewModel(applicati
         attendanceRepo.getAllRecords(),
         timetableRepo.getAllTimetableEntries(),
         subjectRepo.getAllSubjects(),
+        database.subjectMappingDao().getAllMappings(),
         _isLoading,
         _error
     ) { params: Array<Any?> ->
@@ -48,14 +51,17 @@ class ComparisonViewModel(application: Application) : AndroidViewModel(applicati
         val localRecords = params[1] as List<AttendanceRecordEntity>
         val timetable = params[2] as List<TimetableEntryEntity>
         val subjects = params[3] as List<SubjectEntity>
-        val isLoading = params[4] as Boolean
-        val error = params[5] as String?
+        val mappings = params[4] as List<SubjectMappingEntity>
+        val isLoading = params[5] as Boolean
+        val error = params[6] as String?
+
+        val mappingMap = mappings.associate { it.subjectCode to it.subjectName }
 
         // Convert EduPrimeAttendanceEntity to EduPrimeAttendanceRecord for the comparison engine
         val remoteRecords = remoteData.map {
             com.vnrvjiet.attendancemonitor.data.model.EduPrimeAttendanceRecord(
                 subjectCode = it.subjectCode,
-                subjectName = it.subjectName ?: "",
+                subjectName = mappingMap[it.subjectCode] ?: it.subjectName ?: it.subjectCode,
                 conductedClasses = it.conductedClasses,
                 attendedClasses = it.attendedClasses,
                 attendancePercentage = it.attendancePercentage

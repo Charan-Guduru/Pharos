@@ -4,10 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.vnrvjiet.attendancemonitor.data.local.AppDatabase
-import com.vnrvjiet.attendancemonitor.data.local.entity.AttendanceRecordEntity
-import com.vnrvjiet.attendancemonitor.data.local.entity.EduPrimeAttendanceEntity
-import com.vnrvjiet.attendancemonitor.data.local.entity.SubjectEntity
-import com.vnrvjiet.attendancemonitor.data.local.entity.TimetableEntryEntity
+import com.vnrvjiet.attendancemonitor.data.local.entity.*
 import com.vnrvjiet.attendancemonitor.data.model.AttendanceStatus
 import com.vnrvjiet.attendancemonitor.data.model.SyncStatus
 import com.vnrvjiet.attendancemonitor.data.repository.RoomAttendanceRepository
@@ -20,7 +17,9 @@ import java.util.*
 data class DashboardUiState(
     val timetable: List<DashboardItem> = emptyList(),
     val overallPercentage: Float = 0f,
-    val isSynced: Boolean = false
+    val isSynced: Boolean = false,
+    val isTimetableConfigured: Boolean = true,
+    val isLoading: Boolean = true
 )
 
 data class DashboardItem(
@@ -35,6 +34,7 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
     private val timetableRepo = RoomTimetableRepository(db.timetableDao())
     private val subjectRepo = RoomSubjectRepository(db.subjectDao())
     private val attendanceRepo = RoomAttendanceRepository(db.attendanceDao())
+    private val mappingDao = db.subjectMappingDao()
     private val eduPrimeDao = db.eduPrimeAttendanceDao()
 
     private val todayMidnight: Long
@@ -45,17 +45,38 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
             set(Calendar.MILLISECOND, 0)
         }.timeInMillis
 
+    private val currentDayOfWeek: Int
+        get() = Calendar.getInstance().get(Calendar.DAY_OF_WEEK).let { 
+            if (it == Calendar.SUNDAY) 7 else it - 1
+        }
+
     val uiState: StateFlow<DashboardUiState> = combine(
-        timetableRepo.getTimetableForDay(1),
+        timetableRepo.getTimetableForDay(currentDayOfWeek),
+        timetableRepo.getAllTimetableEntries(),
         subjectRepo.getAllSubjects(),
         attendanceRepo.getRecordsForDate(todayMidnight),
-        eduPrimeDao.getAllAttendance()
-    ) { timetable, subjects, records, remoteData ->
-        val items = timetable.mapNotNull { entry ->
+        eduPrimeDao.getAllAttendance(),
+        mappingDao.getAllMappings()
+    ) { params: Array<Any?> ->
+        val todayTimetable = params[0] as List<TimetableEntryEntity>
+        val allEntries = params[1] as List<TimetableEntryEntity>
+        val subjects = params[2] as List<SubjectEntity>
+        val records = params[3] as List<AttendanceRecordEntity>
+        val remoteData = params[4] as List<EduPrimeAttendanceEntity>
+        val mappings = params[5] as List<SubjectMappingEntity>
+
+        val mappingMap = mappings.associate { it.subjectCode to it.subjectName }
+        
+        val items = todayTimetable.mapNotNull { entry ->
             subjects.find { it.id == entry.subjectId }?.let { subject ->
                 val record = records.find { it.timetableEntryId == entry.id }
                 val remote = remoteData.find { it.subjectCode == subject.subjectCode }
-                DashboardItem(entry, subject, record, remote)
+                
+                val mappedSubject = subject.copy(
+                    subjectName = mappingMap[subject.subjectCode] ?: subject.subjectName
+                )
+                
+                DashboardItem(entry, mappedSubject, record, remote)
             }
         }
         
@@ -66,7 +87,9 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
         DashboardUiState(
             timetable = items,
             overallPercentage = percentage,
-            isSynced = remoteData.isNotEmpty()
+            isSynced = remoteData.isNotEmpty(),
+            isTimetableConfigured = allEntries.isNotEmpty(),
+            isLoading = false
         )
     }.stateIn(
         scope = viewModelScope,

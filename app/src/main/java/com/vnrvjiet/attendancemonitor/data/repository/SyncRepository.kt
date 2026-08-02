@@ -1,17 +1,24 @@
 package com.vnrvjiet.attendancemonitor.data.repository
 
 import com.vnrvjiet.attendancemonitor.data.local.dao.EduPrimeAttendanceDao
+import com.vnrvjiet.attendancemonitor.data.local.dao.SubjectMappingDao
 import com.vnrvjiet.attendancemonitor.data.local.entity.EduPrimeAttendanceEntity
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 
 class SyncRepository(
     private val eduPrimeRepo: EduPrimeRepository,
     private val attendanceDao: EduPrimeAttendanceDao,
+    private val mappingDao: SubjectMappingDao,
     private val settingsRepo: SettingsRepository
 ) {
     val syncedAttendance: Flow<List<EduPrimeAttendanceEntity>> = attendanceDao.getAllAttendance()
 
-    suspend fun performSync(): Result<Unit> {
+    /**
+     * Performs synchronization and returns a Result.
+     * The Boolean in Result indicates whether there are missing subject mappings.
+     */
+    suspend fun performSync(): Result<Boolean> {
         val user = settingsRepo.getUsername()
         val pass = settingsRepo.getPassword()
         val dob = settingsRepo.getDob()
@@ -35,7 +42,13 @@ class SyncRepository(
             
             attendanceDao.syncAttendance(entities)
             settingsRepo.setLastVerified(timestamp)
-            Result.success(Unit)
+            
+            // Check for missing mappings
+            val existingMappings = mappingDao.getAllMappings().first()
+            val mappedCodes = existingMappings.map { it.subjectCode }.toSet()
+            val hasMissing = remoteRecords.any { it.subjectCode !in mappedCodes }
+            
+            Result.success(hasMissing)
         } else {
             Result.failure(fetchResult.exceptionOrNull() ?: Exception("Sync failed"))
         }

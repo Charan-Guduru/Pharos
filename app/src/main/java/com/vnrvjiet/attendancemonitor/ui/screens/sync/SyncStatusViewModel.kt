@@ -15,7 +15,8 @@ data class SyncUiState(
     val lastSyncFormatted: String = "Never",
     val isSyncing: Boolean = false,
     val error: String? = null,
-    val success: Boolean = false
+    val success: Boolean = false,
+    val navigateToSetup: Boolean = false
 )
 
 class SyncStatusViewModel(application: Application) : AndroidViewModel(application) {
@@ -24,6 +25,7 @@ class SyncStatusViewModel(application: Application) : AndroidViewModel(applicati
     private val syncRepo = SyncRepository(
         EduPrimeRepository(),
         db.eduPrimeAttendanceDao(),
+        db.subjectMappingDao(),
         settingsRepo
     )
 
@@ -40,24 +42,34 @@ class SyncStatusViewModel(application: Application) : AndroidViewModel(applicati
 
     private val _isSyncing = MutableStateFlow(false)
     private val _error = MutableStateFlow<String?>(null)
+    private val _navigateToSetup = MutableStateFlow(false)
 
     // Merge manual states into the uiState
-    val fullUiState: StateFlow<SyncUiState> = combine(uiState, _isSyncing, _error) { state, syncing, error ->
-        state.copy(isSyncing = syncing, error = error)
+    val fullUiState: StateFlow<SyncUiState> = combine(uiState, _isSyncing, _error, _navigateToSetup) { state, syncing, error, navigate ->
+        state.copy(isSyncing = syncing, error = error, navigateToSetup = navigate)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), SyncUiState())
 
     fun syncNow() {
         viewModelScope.launch {
             _isSyncing.value = true
             _error.value = null
+            _navigateToSetup.value = false
             
             val result = syncRepo.performSync()
-            if (result.isFailure) {
-                _error.value = result.exceptionOrNull()?.message ?: "Sync failed"
+            result.onSuccess { hasMissing ->
+                if (hasMissing) {
+                    _navigateToSetup.value = true
+                }
+            }.onFailure { e ->
+                _error.value = e.message ?: "Sync failed"
             }
             
             _isSyncing.value = false
         }
+    }
+
+    fun onNavigatedToSetup() {
+        _navigateToSetup.value = false
     }
 
     private fun formatLastSync(timestamp: Long): String {

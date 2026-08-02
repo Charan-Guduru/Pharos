@@ -16,8 +16,14 @@ interface TimetableDao {
     suspend fun insertTimetableEntries(entries: List<TimetableEntryEntity>)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertTimetableEntry(entry: TimetableEntryEntity)
+    suspend fun insertTimetableEntry(entry: TimetableEntryEntity): Long
+
+    @Update
+    suspend fun updateTimetableEntry(entry: TimetableEntryEntity)
 
     @Delete
     suspend fun deleteTimetableEntry(entry: TimetableEntryEntity)
+
+    @Query("DELETE FROM timetable")
+    suspend fun deleteAll()
 }

@@ -13,8 +13,8 @@ import androidx.compose.ui.unit.sp
 
 @Composable
 fun SummaryCard(
-    percentage: Float = 84.2f,
-    classesLead: Int = 6
+    percentage: Float,
+    classesLead: Int = 0
 ) {
     Card(
         modifier = Modifier

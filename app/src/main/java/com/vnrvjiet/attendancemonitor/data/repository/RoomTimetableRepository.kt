@@ -9,6 +9,7 @@ class RoomTimetableRepository(private val timetableDao: TimetableDao) : Timetabl
 
     override fun getAllTimetableEntries(): Flow<List<TimetableEntryEntity>> = timetableDao.getAllTimetableEntries()
 
-    override suspend fun insertTimetableEntry(entry: TimetableEntryEntity) = timetableDao.insertTimetableEntry(entry)
+    override suspend fun insertTimetableEntry(entry: TimetableEntryEntity): Long = timetableDao.insertTimetableEntry(entry)
+    override suspend fun updateTimetableEntry(entry: TimetableEntryEntity) = timetableDao.updateTimetableEntry(entry)
     override suspend fun deleteTimetableEntry(entry: TimetableEntryEntity) = timetableDao.deleteTimetableEntry(entry)
 }

@@ -13,7 +13,7 @@ interface AttendanceDao {
     fun getRecordsForDate(date: Long): Flow<List<AttendanceRecordEntity>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertRecord(record: AttendanceRecordEntity)
+    suspend fun insertRecord(record: AttendanceRecordEntity): Long
 
     @Update
     suspend fun updateRecord(record: AttendanceRecordEntity)

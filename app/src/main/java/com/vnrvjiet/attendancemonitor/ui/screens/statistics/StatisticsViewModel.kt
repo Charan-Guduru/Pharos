@@ -38,16 +38,20 @@ class StatisticsViewModel(application: Application) : AndroidViewModel(applicati
     private val syncRepo = SyncRepository(
         EduPrimeRepository(),
         db.eduPrimeAttendanceDao(),
+        db.subjectMappingDao(),
         settingsRepo
     )
 
     val uiState: StateFlow<StatisticsUiState> = combine(
         subjectRepo.getAllSubjects(),
-        syncRepo.syncedAttendance
-    ) { subjects, remoteData ->
+        syncRepo.syncedAttendance,
+        db.subjectMappingDao().getAllMappings()
+    ) { subjects, remoteData, mappings ->
         if (remoteData.isEmpty()) {
             return@combine StatisticsUiState(isEmpty = true)
         }
+
+        val mappingMap = mappings.associate { it.subjectCode to it.subjectName }
 
         // Aggregate Overall Stats
         val overallPresent = remoteData.sumOf { it.attendedClasses }
@@ -57,9 +61,10 @@ class StatisticsViewModel(application: Application) : AndroidViewModel(applicati
         // Subject-wise Stats
         val subjectStats = remoteData.map { remote ->
             val localSubject = subjects.find { it.subjectCode == remote.subjectCode }
+            val mappedName = mappingMap[remote.subjectCode] ?: remote.subjectName ?: remote.subjectCode
             
             SubjectStatUiModel(
-                subjectName = remote.subjectName ?: remote.subjectCode,
+                subjectName = mappedName,
                 percentage = remote.attendancePercentage.toInt(),
                 classesDisplay = "${remote.attendedClasses}/${remote.conductedClasses} Classes",
                 color = localSubject?.color ?: 0xFF9E9E9E.toInt(),
