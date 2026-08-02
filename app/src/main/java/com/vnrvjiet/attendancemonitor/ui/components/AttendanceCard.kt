@@ -7,6 +7,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Done
+import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.WarningAmber
@@ -31,7 +32,8 @@ fun AttendanceCard(
     statusText: String? = null,
     accentColor: Color = Color(0xFF6200EE),
     currentStatus: AttendanceStatus? = null,
-    onStatusSelected: (AttendanceStatus) -> Unit = {}
+    onStatusSelected: (AttendanceStatus) -> Unit = {},
+    onMoreClick: () -> Unit = {}
 ) {
     Card(
         modifier = Modifier
@@ -152,6 +154,14 @@ fun AttendanceCard(
                             modifier = Modifier.weight(1f),
                             onClick = { onStatusSelected(AttendanceStatus.BUNK) }
                         )
+                        AttendanceActionButton(
+                            label = "MORE",
+                            icon = Icons.Default.MoreHoriz,
+                            containerColor = Color(0xFFF5F5F5),
+                            contentColor = Color.Gray,
+                            modifier = Modifier.weight(1f),
+                            onClick = onMoreClick
+                        )
                     }
                 }
             }
@@ -165,7 +175,14 @@ fun StatusChip(status: AttendanceStatus) {
         AttendanceStatus.PRESENT -> Color(0xFF2E7D32) to "PRESENT"
         AttendanceStatus.ABSENT -> Color(0xFFC62828) to "ABSENT"
         AttendanceStatus.BUNK -> Color(0xFFF9A825) to "BUNK"
-        else -> Color.Gray to status.name
+        AttendanceStatus.HOLIDAY -> Color(0xFF2196F3) to "HOLIDAY"
+        AttendanceStatus.CLASS_CANCELLED -> Color(0xFFEF5350) to "CANCELLED"
+        AttendanceStatus.VOLUNTEER -> Color(0xFF66BB6A) to "VOLUNTEER"
+        AttendanceStatus.COLLEGE_EVENT -> Color(0xFFFFA726) to "EVENT"
+        AttendanceStatus.HACKATHON -> Color(0xFF7E57C2) to "HACKATHON"
+        AttendanceStatus.SPORTS_EVENT -> Color(0xFFFF7043) to "SPORTS"
+        AttendanceStatus.MEDICAL_LEAVE -> Color(0xFFEC407A) to "MEDICAL"
+        AttendanceStatus.OTHER -> Color.Gray to "OTHER"
     }
     Surface(
         color = color.copy(alpha = 0.1f),

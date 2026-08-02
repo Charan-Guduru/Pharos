@@ -13,20 +13,30 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.vnrvjiet.attendancemonitor.data.model.AttendanceStatus
 
-data class SituationItem(val label: String, val icon: ImageVector, val color: Color)
+data class SituationItem(
+    val label: String,
+    val icon: ImageVector,
+    val color: Color,
+    val status: AttendanceStatus
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MoreSituationsSheet(onDismiss: () -> Unit) {
+fun MoreSituationsSheet(
+    onStatusSelected: (AttendanceStatus) -> Unit,
+    onDismiss: () -> Unit
+) {
     val situations = listOf(
-        SituationItem("Holiday", Icons.Default.Celebration, Color(0xFF2196F3)),
-        SituationItem("Class Cancelled", Icons.Default.EventBusy, Color(0xFFEF5350)),
-        SituationItem("Volunteer", Icons.Default.VolunteerActivism, Color(0xFF66BB6A)),
-        SituationItem("College Event", Icons.Default.School, Color(0xFFFFA726)),
-        SituationItem("Hackathon", Icons.Default.Code, Color(0xFF7E57C2)),
-        SituationItem("Sports Event", Icons.Default.SportsBasketball, Color(0xFFFF7043)),
-        SituationItem("Medical Leave", Icons.Default.MedicalServices, Color(0xFFEC407A))
+        SituationItem("Holiday", Icons.Default.Celebration, Color(0xFF2196F3), AttendanceStatus.HOLIDAY),
+        SituationItem("Class Cancelled", Icons.Default.EventBusy, Color(0xFFEF5350), AttendanceStatus.CLASS_CANCELLED),
+        SituationItem("Volunteer", Icons.Default.VolunteerActivism, Color(0xFF66BB6A), AttendanceStatus.VOLUNTEER),
+        SituationItem("College Event", Icons.Default.School, Color(0xFFFFA726), AttendanceStatus.COLLEGE_EVENT),
+        SituationItem("Hackathon", Icons.Default.Code, Color(0xFF7E57C2), AttendanceStatus.HACKATHON),
+        SituationItem("Sports Event", Icons.Default.SportsBasketball, Color(0xFFFF7043), AttendanceStatus.SPORTS_EVENT),
+        SituationItem("Medical Leave", Icons.Default.MedicalServices, Color(0xFFEC407A), AttendanceStatus.MEDICAL_LEAVE),
+        SituationItem("Other", Icons.Default.MoreHoriz, Color.Gray, AttendanceStatus.OTHER)
     )
 
     ModalBottomSheet(onDismissRequest = onDismiss) {
@@ -38,7 +48,10 @@ fun MoreSituationsSheet(onDismiss: () -> Unit) {
 
             situations.forEach { situation ->
                 Surface(
-                    onClick = {},
+                    onClick = {
+                        onStatusSelected(situation.status)
+                        onDismiss()
+                    },
                     modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
                     shape = MaterialTheme.shapes.medium,
                     color = Color(0xFFF8F9FA)

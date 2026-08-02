@@ -17,6 +17,7 @@ import com.vnrvjiet.attendancemonitor.data.repository.FakeSubjectRepository
 import com.vnrvjiet.attendancemonitor.data.repository.FakeTimetableRepository
 import com.vnrvjiet.attendancemonitor.ui.components.ActivityCard
 import com.vnrvjiet.attendancemonitor.ui.components.AttendanceCard
+import com.vnrvjiet.attendancemonitor.ui.components.MoreSituationsSheet
 import com.vnrvjiet.attendancemonitor.ui.components.SummaryCard
 
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -27,6 +28,20 @@ fun DashboardScreen(viewModel: DashboardViewModel = viewModel()) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     
     var selectedTab by remember { mutableIntStateOf(0) }
+    var showMoreSheet by remember { mutableStateOf(false) }
+    var selectedEntryId by remember { mutableStateOf<Long?>(null) }
+
+    if (showMoreSheet && selectedEntryId != null) {
+        MoreSituationsSheet(
+            onStatusSelected = { status ->
+                viewModel.recordAttendance(selectedEntryId!!, status)
+            },
+            onDismiss = {
+                showMoreSheet = false
+                selectedEntryId = null
+            }
+        )
+    }
 
     LazyColumn(
         modifier = Modifier
@@ -107,6 +122,10 @@ fun DashboardScreen(viewModel: DashboardViewModel = viewModel()) {
                 currentStatus = item.attendanceRecord?.status,
                 onStatusSelected = { status ->
                     viewModel.recordAttendance(item.entry.id, status)
+                },
+                onMoreClick = {
+                    selectedEntryId = item.entry.id
+                    showMoreSheet = true
                 }
             )
         }
