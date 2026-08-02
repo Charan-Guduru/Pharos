@@ -27,6 +27,16 @@ interface EduPrimeApi {
     @GET("Login/Logoff")
     suspend fun logout(): Response<String>
 
-    @GET("Student/StudentAttendance/StudentAttendance")
-    suspend fun getAttendancePage(): Response<String>
+    @GET("App")
+    suspend fun getAppLandingPage(): Response<String>
+
+    @GET("Shared/Widget/STDINFO")
+    suspend fun getStdInfo(): Response<String>
+
+    @GET("Academic/Shared/GetStdAttPer")
+    suspend fun getAttendanceData(
+        @Query("studentId") studentId: String,
+        @Query("semId") semId: String = "undefined",
+        @Query("_") timestamp: Long = System.currentTimeMillis()
+    ): Response<EduPrimeJsonResponse>
 }

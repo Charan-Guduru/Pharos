@@ -24,6 +24,9 @@ class SettingsRepository(context: Context) {
     private val _theme = MutableStateFlow(prefs.getString("app_theme", "System") ?: "System")
     val theme: StateFlow<String> = _theme.asStateFlow()
 
+    private val _lastVerified = MutableStateFlow(prefs.getLong("last_verified", 0L))
+    val lastVerified: StateFlow<Long> = _lastVerified.asStateFlow()
+
     fun getUsername(): String = prefs.getString("eduprime_user", "") ?: ""
     fun getPassword(): String = prefs.getString("eduprime_pass", "") ?: ""
     fun getDob(): String = prefs.getString("eduprime_dob", "") ?: ""
@@ -33,7 +36,15 @@ class SettingsRepository(context: Context) {
             putString("eduprime_user", user)
             putString("eduprime_pass", pass)
             if (dob.isNotEmpty()) putString("eduprime_dob", dob)
+            // Reset verification on credential change
+            putLong("last_verified", 0L)
         }.apply()
+        _lastVerified.value = 0L
+    }
+
+    fun setLastVerified(timestamp: Long) {
+        prefs.edit().putLong("last_verified", timestamp).apply()
+        _lastVerified.value = timestamp
     }
 
     fun setAutoSync(enabled: Boolean) {

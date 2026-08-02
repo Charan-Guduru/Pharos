@@ -12,4 +12,5 @@ sealed class Screen(val route: String, val title: String, val icon: ImageVector)
     object Notifications : Screen("notifications", "Notifications", Icons.Default.Notifications)
     object SyncStatus : Screen("sync_status", "Sync Status", Icons.Default.Sync)
     object Settings : Screen("settings", "Settings", Icons.Default.Settings)
+    object DebugAttendance : Screen("debug_attendance", "Debug Attendance", Icons.Default.BugReport)
 }

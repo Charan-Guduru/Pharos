@@ -24,11 +24,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import java.text.SimpleDateFormat
+import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     onBack: () -> Unit,
+    onDebugAttendanceClick: () -> Unit,
     viewModel: SettingsViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -111,10 +114,56 @@ fun SettingsScreen(
 
                 Spacer(modifier = Modifier.height(20.dp))
 
+                if (uiState.lastVerified > 0L && uiState.loginTestResult?.contains("✅") != false) {
+                    val sdfDate = remember { SimpleDateFormat("dd MMM yyyy", Locale.getDefault()) }
+                    val sdfTime = remember { SimpleDateFormat("HH:mm:ss", Locale.getDefault()) }
+                    val dateStr = sdfDate.format(Date(uiState.lastVerified))
+                    val timeStr = sdfTime.format(Date(uiState.lastVerified))
+
+                    Surface(
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+                        color = Color(0xFFE8F5E9),
+                        shape = RoundedCornerShape(12.dp),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFC8E6C9))
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Default.CheckCircle,
+                                contentDescription = null,
+                                tint = Color(0xFF2E7D32),
+                                modifier = Modifier.size(32.dp)
+                            )
+                            Spacer(modifier = Modifier.width(16.dp))
+                            Column {
+                                Text(
+                                    "🟢 EduPrime Verified",
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF2E7D32),
+                                    fontSize = 16.sp
+                                )
+                                Text(
+                                    "Last Verified:",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = Color.Gray,
+                                    modifier = Modifier.padding(top = 4.dp)
+                                )
+                                Text(
+                                    "$dateStr at $timeStr",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        }
+                    }
+                }
+
                 Button(
                     onClick = { viewModel.testEduPrimeLogin() },
                     modifier = Modifier.fillMaxWidth().height(50.dp),
-                    enabled = !uiState.isTestingLogin,
+                    enabled = !uiState.isTestingLogin && uiState.cooldownSeconds == 0,
                     shape = MaterialTheme.shapes.medium
                 ) {
                     if (uiState.isTestingLogin) {
@@ -125,24 +174,30 @@ fun SettingsScreen(
                         )
                         Spacer(modifier = Modifier.width(12.dp))
                         Text("Authenticating...")
+                    } else if (uiState.cooldownSeconds > 0) {
+                        Text("Cooldown (${uiState.cooldownSeconds}s)")
+                    } else if (uiState.lastVerified > 0L) {
+                        Text("Verify Again")
                     } else {
                         Text("Test EduPrime Login")
                     }
                 }
 
                 uiState.loginTestResult?.let { result ->
-                    Surface(
-                        modifier = Modifier.padding(top = 12.dp).fillMaxWidth(),
-                        color = if (result.contains("✅")) Color(0xFFE8F5E9) else Color(0xFFFFEBEE),
-                        shape = RoundedCornerShape(8.dp)
-                    ) {
-                        Text(
-                            text = result,
-                            modifier = Modifier.padding(12.dp),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = if (result.contains("✅")) Color(0xFF2E7D32) else Color(0xFFC62828),
-                            fontWeight = FontWeight.Medium
-                        )
+                    if (!result.contains("✅")) {
+                        Surface(
+                            modifier = Modifier.padding(top = 12.dp).fillMaxWidth(),
+                            color = Color(0xFFFFEBEE),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Text(
+                                text = result,
+                                modifier = Modifier.padding(12.dp),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = Color(0xFFC62828),
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
                     }
                 }
             }
@@ -234,6 +289,19 @@ fun SettingsScreen(
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedButton(onClick = {}, modifier = Modifier.fillMaxWidth()) {
                     Text("Open Source Licenses")
+                }
+            }
+
+            // DEBUG SECTION (TEMPORARY)
+            SettingsSection(title = "Developer Settings (Debug)") {
+                OutlinedButton(
+                    onClick = onDebugAttendanceClick,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Icon(Icons.Default.BugReport, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Fetch EduPrime Attendance (Debug)")
                 }
             }
             

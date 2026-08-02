@@ -6,8 +6,11 @@ import androidx.lifecycle.viewModelScope
 import com.vnrvjiet.attendancemonitor.data.model.LoginResult
 import com.vnrvjiet.attendancemonitor.data.repository.EduPrimeRepository
 import com.vnrvjiet.attendancemonitor.data.repository.SettingsRepository
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import java.util.*
 
 data class SettingsUiState(
     val username: String = "",
@@ -18,7 +21,9 @@ data class SettingsUiState(
     val mismatchAlerts: Boolean = true,
     val theme: String = "System",
     val isTestingLogin: Boolean = false,
-    val loginTestResult: String? = null
+    val loginTestResult: String? = null,
+    val lastVerified: Long = 0L,
+    val cooldownSeconds: Int = 0
 )
 
 class SettingsViewModel(application: Application) : AndroidViewModel(application) {
@@ -27,6 +32,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     private val _isTestingLogin = MutableStateFlow(false)
     private val _loginTestResult = MutableStateFlow<String?>(null)
+    private val _cooldownSeconds = MutableStateFlow(0)
+    private var cooldownJob: Job? = null
 
     val uiState: StateFlow<SettingsUiState> = combine(
         repository.autoSync,
@@ -34,8 +41,10 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         repository.milestoneAlerts,
         repository.mismatchAlerts,
         repository.theme,
+        repository.lastVerified,
         _isTestingLogin,
-        _loginTestResult
+        _loginTestResult,
+        _cooldownSeconds
     ) { params: Array<Any?> ->
         SettingsUiState(
             username = repository.getUsername(),
@@ -45,8 +54,10 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             milestoneAlerts = params[2] as Boolean,
             mismatchAlerts = params[3] as Boolean,
             theme = params[4] as String,
-            isTestingLogin = params[5] as Boolean,
-            loginTestResult = params[6] as String?
+            lastVerified = params[5] as Long,
+            isTestingLogin = params[6] as Boolean,
+            loginTestResult = params[7] as String?,
+            cooldownSeconds = params[8] as Int
         )
     }.stateIn(
         scope = viewModelScope,
@@ -55,6 +66,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     )
 
     fun testEduPrimeLogin() {
+        if (_cooldownSeconds.value > 0) return
+
         viewModelScope.launch {
             _isTestingLogin.value = true
             _loginTestResult.value = "Testing credentials..."
@@ -66,7 +79,11 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             val result = eduPrimeRepo.testLogin(user, pass, dob)
             
             _loginTestResult.value = when (result) {
-                is LoginResult.Success -> "✅ Login Successful"
+                is LoginResult.Success -> {
+                    repository.setLastVerified(System.currentTimeMillis())
+                    startCooldown()
+                    "✅ Login Successful"
+                }
                 is LoginResult.InvalidCredentials -> "❌ Invalid Credentials"
                 is LoginResult.NetworkUnavailable -> "❌ Network Unavailable"
                 is LoginResult.Timeout -> "❌ Connection Timed Out"
@@ -81,9 +98,22 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
+    private fun startCooldown() {
+        cooldownJob?.cancel()
+        cooldownJob = viewModelScope.launch {
+            for (i in 30 downTo 1) {
+                _cooldownSeconds.value = i
+                delay(1000)
+            }
+            _cooldownSeconds.value = 0
+        }
+    }
+
     fun updateCredentials(user: String, pass: String, dob: String) {
         repository.saveCredentials(user, pass, dob)
         _loginTestResult.value = null
+        _cooldownSeconds.value = 0
+        cooldownJob?.cancel()
     }
 
     fun getPassword(): String = repository.getPassword()
