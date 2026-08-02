@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.vnrvjiet.attendancemonitor.data.local.AppDatabase
 import com.vnrvjiet.attendancemonitor.data.local.entity.AttendanceRecordEntity
+import com.vnrvjiet.attendancemonitor.data.local.entity.EduPrimeAttendanceEntity
 import com.vnrvjiet.attendancemonitor.data.local.entity.SubjectEntity
 import com.vnrvjiet.attendancemonitor.data.local.entity.TimetableEntryEntity
 import com.vnrvjiet.attendancemonitor.data.model.AttendanceStatus
@@ -17,13 +18,16 @@ import kotlinx.coroutines.launch
 import java.util.*
 
 data class DashboardUiState(
-    val timetable: List<DashboardItem> = emptyList()
+    val timetable: List<DashboardItem> = emptyList(),
+    val overallPercentage: Float = 0f,
+    val isSynced: Boolean = false
 )
 
 data class DashboardItem(
     val entry: TimetableEntryEntity,
     val subject: SubjectEntity,
-    val attendanceRecord: AttendanceRecordEntity? = null
+    val attendanceRecord: AttendanceRecordEntity? = null,
+    val remoteAttendance: EduPrimeAttendanceEntity? = null
 )
 
 class DashboardViewModel(application: Application) : AndroidViewModel(application) {
@@ -31,6 +35,7 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
     private val timetableRepo = RoomTimetableRepository(db.timetableDao())
     private val subjectRepo = RoomSubjectRepository(db.subjectDao())
     private val attendanceRepo = RoomAttendanceRepository(db.attendanceDao())
+    private val eduPrimeDao = db.eduPrimeAttendanceDao()
 
     private val todayMidnight: Long
         get() = Calendar.getInstance().apply {
@@ -43,15 +48,26 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
     val uiState: StateFlow<DashboardUiState> = combine(
         timetableRepo.getTimetableForDay(1),
         subjectRepo.getAllSubjects(),
-        attendanceRepo.getRecordsForDate(todayMidnight)
-    ) { timetable, subjects, records ->
+        attendanceRepo.getRecordsForDate(todayMidnight),
+        eduPrimeDao.getAllAttendance()
+    ) { timetable, subjects, records, remoteData ->
         val items = timetable.mapNotNull { entry ->
             subjects.find { it.id == entry.subjectId }?.let { subject ->
                 val record = records.find { it.timetableEntryId == entry.id }
-                DashboardItem(entry, subject, record)
+                val remote = remoteData.find { it.subjectCode == subject.subjectCode }
+                DashboardItem(entry, subject, record, remote)
             }
         }
-        DashboardUiState(items)
+        
+        val overallPresent = remoteData.sumOf { it.attendedClasses }
+        val overallTotal = remoteData.sumOf { it.conductedClasses }
+        val percentage = if (overallTotal > 0) (overallPresent.toFloat() / overallTotal) * 100 else 0f
+        
+        DashboardUiState(
+            timetable = items,
+            overallPercentage = percentage,
+            isSynced = remoteData.isNotEmpty()
+        )
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),

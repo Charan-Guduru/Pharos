@@ -3,28 +3,37 @@ package com.vnrvjiet.attendancemonitor.ui.screens.sync
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SyncStatusScreen(onBack: () -> Unit) {
+fun SyncStatusScreen(
+    onBack: () -> Unit,
+    viewModel: SyncStatusViewModel = viewModel()
+) {
+    val uiState by viewModel.fullUiState.collectAsStateWithLifecycle()
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("System Sync") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 }
             )
@@ -39,32 +48,49 @@ fun SyncStatusScreen(onBack: () -> Unit) {
         ) {
             Surface(
                 shape = CircleShape,
-                color = Color(0xFFE8F5E9),
+                color = if (uiState.error != null) Color(0xFFFFEBEE) else Color(0xFFE8F5E9),
                 modifier = Modifier.size(120.dp)
             ) {
                 Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        Icons.Default.CheckCircle,
-                        contentDescription = null,
-                        modifier = Modifier.size(64.dp),
-                        tint = Color(0xFF2E7D32)
-                    )
+                    if (uiState.isSyncing) {
+                        CircularProgressIndicator(modifier = Modifier.size(64.dp))
+                    } else {
+                        Icon(
+                            if (uiState.error != null) Icons.Default.Warning else Icons.Default.CheckCircle,
+                            contentDescription = null,
+                            modifier = Modifier.size(64.dp),
+                            tint = if (uiState.error != null) Color.Red else Color(0xFF2E7D32)
+                        )
+                    }
                 }
             }
 
             Spacer(modifier = Modifier.height(24.dp))
-            Text("Synced Successfully", fontSize = 24.sp, fontWeight = FontWeight.Bold)
-            Text("Your timetable and attendance are up to date.", color = Color.Gray)
+            Text(
+                text = when {
+                    uiState.isSyncing -> "Syncing..."
+                    uiState.error != null -> "Sync Failed"
+                    else -> "Synced Successfully"
+                },
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = uiState.error ?: "Your timetable and attendance are up to date.",
+                color = Color.Gray,
+                modifier = Modifier.padding(top = 8.dp)
+            )
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            SyncInfoCard()
+            SyncInfoCard(lastSync = uiState.lastSyncFormatted)
 
             Spacer(modifier = Modifier.weight(1f))
 
             Button(
-                onClick = {},
+                onClick = { viewModel.syncNow() },
                 modifier = Modifier.fillMaxWidth().height(56.dp),
+                enabled = !uiState.isSyncing,
                 shape = MaterialTheme.shapes.medium
             ) {
                 Icon(Icons.Default.Sync, contentDescription = null)
@@ -76,16 +102,16 @@ fun SyncStatusScreen(onBack: () -> Unit) {
 }
 
 @Composable
-fun SyncInfoCard() {
+fun SyncInfoCard(lastSync: String) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            SyncDetailItem("LAST SYNC", "4 minutes ago")
-            Divider(modifier = Modifier.padding(vertical = 12.dp), color = Color(0xFFF5F5F5))
-            SyncDetailItem("NEXT SCHEDULED", "Today, 2:30 PM")
+            SyncDetailItem("LAST SYNC", lastSync)
+            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = Color(0xFFF5F5F5))
+            SyncDetailItem("NEXT SCHEDULED", "Manual Only")
         }
     }
 }

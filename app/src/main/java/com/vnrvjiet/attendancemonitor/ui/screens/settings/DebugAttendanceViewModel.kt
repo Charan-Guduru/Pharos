@@ -3,12 +3,10 @@ package com.vnrvjiet.attendancemonitor.ui.screens.settings
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.vnrvjiet.attendancemonitor.data.local.AppDatabase
 import com.vnrvjiet.attendancemonitor.data.model.EduPrimeAttendanceRecord
-import com.vnrvjiet.attendancemonitor.data.repository.EduPrimeRepository
-import com.vnrvjiet.attendancemonitor.data.repository.SettingsRepository
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import com.vnrvjiet.attendancemonitor.data.repository.*
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
 sealed class DebugAttendanceUiState {
@@ -20,34 +18,56 @@ sealed class DebugAttendanceUiState {
 }
 
 class DebugAttendanceViewModel(application: Application) : AndroidViewModel(application) {
-    private val repository = SettingsRepository(application)
+    private val db = AppDatabase.getDatabase(application)
+    private val settingsRepo = SettingsRepository(application)
     private val eduPrimeRepo = EduPrimeRepository()
+    private val syncRepo = SyncRepository(
+        eduPrimeRepo,
+        db.eduPrimeAttendanceDao(),
+        settingsRepo
+    )
 
-    private val _uiState = MutableStateFlow<DebugAttendanceUiState>(DebugAttendanceUiState.Idle)
-    val uiState: StateFlow<DebugAttendanceUiState> = _uiState.asStateFlow()
+    private val _isLoading = MutableStateFlow(false)
+    private val _error = MutableStateFlow<String?>(null)
+
+    val uiState: StateFlow<DebugAttendanceUiState> = combine(
+        syncRepo.syncedAttendance,
+        _isLoading,
+        _error
+    ) { remoteData, isLoading, error ->
+        when {
+            isLoading -> DebugAttendanceUiState.Loading
+            error != null -> DebugAttendanceUiState.Error(error)
+            remoteData.isEmpty() -> DebugAttendanceUiState.Empty
+            else -> {
+                val records = remoteData.map {
+                    EduPrimeAttendanceRecord(
+                        it.subjectCode,
+                        it.subjectName ?: "",
+                        it.conductedClasses,
+                        it.attendedClasses,
+                        it.attendancePercentage
+                    )
+                }
+                DebugAttendanceUiState.Success(records)
+            }
+        }
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = DebugAttendanceUiState.Idle
+    )
 
     fun fetchAttendance() {
         viewModelScope.launch {
-            _uiState.value = DebugAttendanceUiState.Loading
+            _isLoading.value = true
+            _error.value = null
             
-            val user = repository.getUsername()
-            val pass = repository.getPassword()
-            val dob = repository.getDob()
-            
-            val result = eduPrimeRepo.fetchAttendance(user, pass, dob)
-            
-            result.fold(
-                onSuccess = { records ->
-                    if (records.isEmpty()) {
-                        _uiState.value = DebugAttendanceUiState.Empty
-                    } else {
-                        _uiState.value = DebugAttendanceUiState.Success(records)
-                    }
-                },
-                onFailure = { error ->
-                    _uiState.value = DebugAttendanceUiState.Error(error.message ?: "Unknown error")
-                }
-            )
+            val result = syncRepo.performSync()
+            if (result.isFailure) {
+                _error.value = result.exceptionOrNull()?.message ?: "Sync failed"
+            }
+            _isLoading.value = false
         }
     }
 }

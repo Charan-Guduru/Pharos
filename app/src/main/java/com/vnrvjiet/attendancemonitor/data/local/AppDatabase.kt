@@ -7,9 +7,11 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.vnrvjiet.attendancemonitor.data.local.dao.AttendanceDao
+import com.vnrvjiet.attendancemonitor.data.local.dao.EduPrimeAttendanceDao
 import com.vnrvjiet.attendancemonitor.data.local.dao.SubjectDao
 import com.vnrvjiet.attendancemonitor.data.local.dao.TimetableDao
 import com.vnrvjiet.attendancemonitor.data.local.entity.AttendanceRecordEntity
+import com.vnrvjiet.attendancemonitor.data.local.entity.EduPrimeAttendanceEntity
 import com.vnrvjiet.attendancemonitor.data.local.entity.SubjectEntity
 import com.vnrvjiet.attendancemonitor.data.local.entity.TimetableEntryEntity
 import kotlinx.coroutines.CoroutineScope
@@ -20,9 +22,10 @@ import kotlinx.coroutines.launch
     entities = [
         SubjectEntity::class,
         TimetableEntryEntity::class,
-        AttendanceRecordEntity::class
+        AttendanceRecordEntity::class,
+        EduPrimeAttendanceEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -30,6 +33,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun subjectDao(): SubjectDao
     abstract fun timetableDao(): TimetableDao
     abstract fun attendanceDao(): AttendanceDao
+    abstract fun eduPrimeAttendanceDao(): EduPrimeAttendanceDao
 
     companion object {
         @Volatile
@@ -42,6 +46,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "attendance_db"
                 )
+                .fallbackToDestructiveMigration()
                 .addCallback(DatabaseCallback())
                 .build()
                 INSTANCE = instance

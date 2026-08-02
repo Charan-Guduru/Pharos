@@ -4,13 +4,10 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.vnrvjiet.attendancemonitor.data.local.AppDatabase
-import com.vnrvjiet.attendancemonitor.data.local.entity.AttendanceRecordEntity
-import com.vnrvjiet.attendancemonitor.data.local.entity.SubjectEntity
-import com.vnrvjiet.attendancemonitor.data.local.entity.TimetableEntryEntity
-import com.vnrvjiet.attendancemonitor.data.model.AttendanceStatus
-import com.vnrvjiet.attendancemonitor.data.repository.RoomAttendanceRepository
 import com.vnrvjiet.attendancemonitor.data.repository.RoomSubjectRepository
-import com.vnrvjiet.attendancemonitor.data.repository.RoomTimetableRepository
+import com.vnrvjiet.attendancemonitor.data.repository.SyncRepository
+import com.vnrvjiet.attendancemonitor.data.repository.EduPrimeRepository
+import com.vnrvjiet.attendancemonitor.data.repository.SettingsRepository
 import kotlinx.coroutines.flow.*
 import kotlin.math.ceil
 import kotlin.math.floor
@@ -37,55 +34,45 @@ data class SubjectStatUiModel(
 class StatisticsViewModel(application: Application) : AndroidViewModel(application) {
     private val db = AppDatabase.getDatabase(application)
     private val subjectRepo = RoomSubjectRepository(db.subjectDao())
-    private val attendanceRepo = RoomAttendanceRepository(db.attendanceDao())
-    private val timetableRepo = RoomTimetableRepository(db.timetableDao())
+    private val settingsRepo = SettingsRepository(application)
+    private val syncRepo = SyncRepository(
+        EduPrimeRepository(),
+        db.eduPrimeAttendanceDao(),
+        settingsRepo
+    )
 
     val uiState: StateFlow<StatisticsUiState> = combine(
         subjectRepo.getAllSubjects(),
-        attendanceRepo.getAllRecords(),
-        timetableRepo.getAllTimetableEntries()
-    ) { subjects, records, timetable ->
-        if (records.isEmpty()) {
+        syncRepo.syncedAttendance
+    ) { subjects, remoteData ->
+        if (remoteData.isEmpty()) {
             return@combine StatisticsUiState(isEmpty = true)
         }
 
-        val attendanceSubjects = subjects.filter { it.isAttendanceSubject }
-        val attendanceSubjectIds = attendanceSubjects.map { it.id }.toSet()
-
-        // Filter records that belong to attendance subjects
-        val validRecords = records.filter { record ->
-            val entry = timetable.find { it.id == record.timetableEntryId }
-            entry != null && attendanceSubjectIds.contains(entry.subjectId)
-        }
-
-        if (validRecords.isEmpty()) {
-            return@combine StatisticsUiState(isEmpty = true)
-        }
-
-        // Overall Stats
-        val overallStats = calculateStats(validRecords)
+        // Aggregate Overall Stats
+        val overallPresent = remoteData.sumOf { it.attendedClasses }
+        val overallTotal = remoteData.sumOf { it.conductedClasses }
+        val overallPercentage = if (overallTotal > 0) (overallPresent.toFloat() / overallTotal) * 100 else 0f
         
         // Subject-wise Stats
-        val subjectStats = attendanceSubjects.map { subject ->
-            val subjectTimetableIds = timetable.filter { it.subjectId == subject.id }.map { it.id }.toSet()
-            val subjectRecords = validRecords.filter { subjectTimetableIds.contains(it.timetableEntryId) }
-            val stats = calculateStats(subjectRecords)
+        val subjectStats = remoteData.map { remote ->
+            val localSubject = subjects.find { it.subjectCode == remote.subjectCode }
             
             SubjectStatUiModel(
-                subjectName = subject.subjectName,
-                percentage = stats.percentage.toInt(),
-                classesDisplay = "${stats.present}/${stats.total} Classes",
-                color = subject.color,
-                status = getStatusLabel(stats.percentage)
+                subjectName = remote.subjectName ?: remote.subjectCode,
+                percentage = remote.attendancePercentage.toInt(),
+                classesDisplay = "${remote.attendedClasses}/${remote.conductedClasses} Classes",
+                color = localSubject?.color ?: 0xFF9E9E9E.toInt(),
+                status = getStatusLabel(remote.attendancePercentage.toFloat())
             )
         }
 
         StatisticsUiState(
-            overallPercentage = overallStats.percentage,
-            safeLeave75 = calculateSafeLeave(overallStats.present, overallStats.total, 0.75f),
-            safeLeave80 = calculateSafeLeave(overallStats.present, overallStats.total, 0.80f),
-            classesNeeded75 = calculateClassesNeeded(overallStats.present, overallStats.total, 0.75f),
-            classesNeeded80 = calculateClassesNeeded(overallStats.present, overallStats.total, 0.80f),
+            overallPercentage = overallPercentage,
+            safeLeave75 = calculateSafeLeave(overallPresent, overallTotal, 0.75f),
+            safeLeave80 = calculateSafeLeave(overallPresent, overallTotal, 0.80f),
+            classesNeeded75 = calculateClassesNeeded(overallPresent, overallTotal, 0.75f),
+            classesNeeded80 = calculateClassesNeeded(overallPresent, overallTotal, 0.80f),
             subjectStats = subjectStats,
             isEmpty = false
         )
@@ -94,16 +81,6 @@ class StatisticsViewModel(application: Application) : AndroidViewModel(applicati
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = StatisticsUiState()
     )
-
-    private fun calculateStats(records: List<AttendanceRecordEntity>): AttendanceCalculation {
-        val present = records.count { it.status == AttendanceStatus.PRESENT }
-        val absent = records.count { it.status == AttendanceStatus.ABSENT }
-        val bunk = records.count { it.status == AttendanceStatus.BUNK }
-        val total = present + absent + bunk
-        
-        val percentage = if (total > 0) (present.toFloat() / total) * 100 else 0f
-        return AttendanceCalculation(present, total, percentage)
-    }
 
     private fun calculateSafeLeave(present: Int, total: Int, threshold: Float): Int {
         if (total == 0) return 0
@@ -132,6 +109,4 @@ class StatisticsViewModel(application: Application) : AndroidViewModel(applicati
             else -> "LOW"
         }
     }
-
-    private data class AttendanceCalculation(val present: Int, val total: Int, val percentage: Float)
 }

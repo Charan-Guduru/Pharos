@@ -13,8 +13,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.vnrvjiet.attendancemonitor.data.repository.FakeSubjectRepository
-import com.vnrvjiet.attendancemonitor.data.repository.FakeTimetableRepository
 import com.vnrvjiet.attendancemonitor.ui.components.ActivityCard
 import com.vnrvjiet.attendancemonitor.ui.components.AttendanceCard
 import com.vnrvjiet.attendancemonitor.ui.components.MoreSituationsSheet
@@ -23,6 +21,10 @@ import com.vnrvjiet.attendancemonitor.ui.components.SummaryCard
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+
 @Composable
 fun DashboardScreen(viewModel: DashboardViewModel = viewModel()) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -30,6 +32,9 @@ fun DashboardScreen(viewModel: DashboardViewModel = viewModel()) {
     var selectedTab by remember { mutableIntStateOf(0) }
     var showMoreSheet by remember { mutableStateOf(false) }
     var selectedEntryId by remember { mutableStateOf<Long?>(null) }
+    
+    val dateFormatter = remember { SimpleDateFormat("EEE, MMM d", Locale.getDefault()) }
+    val currentDate = remember { dateFormatter.format(Date()) }
 
     if (showMoreSheet && selectedEntryId != null) {
         MoreSituationsSheet(
@@ -72,7 +77,19 @@ fun DashboardScreen(viewModel: DashboardViewModel = viewModel()) {
         }
 
         item {
-            SummaryCard()
+            if (uiState.isSynced) {
+                SummaryCard(percentage = uiState.overallPercentage)
+            } else {
+                Card(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                    shape = RoundedCornerShape(24.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF616161))
+                ) {
+                    Box(modifier = Modifier.padding(24.dp).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                        Text("Not Synced", color = Color.White, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
         }
 
         item {
@@ -82,7 +99,7 @@ fun DashboardScreen(viewModel: DashboardViewModel = viewModel()) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Mon, Aug 2",
+                    text = currentDate,
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold
                 )
@@ -110,6 +127,14 @@ fun DashboardScreen(viewModel: DashboardViewModel = viewModel()) {
         }
 
         items(uiState.timetable) { item ->
+            val attendancePercentage = item.remoteAttendance?.attendancePercentage
+            val statusText = if (attendancePercentage != null) {
+                if (attendancePercentage < 75) "Low (${attendancePercentage.toInt()}%)" 
+                else "${attendancePercentage.toInt()}%"
+            } else {
+                null
+            }
+
             AttendanceCard(
                 subject = item.subject.subjectName,
                 faculty = item.subject.facultyName,
@@ -117,7 +142,7 @@ fun DashboardScreen(viewModel: DashboardViewModel = viewModel()) {
                 room = item.subject.roomNumber,
                 isAttendancePeriod = item.subject.isAttendanceSubject,
                 isNow = item.entry.id == 2L, // Dummy logic for current class
-                statusText = if (item.entry.id == 2L) "At Risk (72%)" else null,
+                statusText = statusText,
                 accentColor = Color(item.subject.color),
                 currentStatus = item.attendanceRecord?.status,
                 onStatusSelected = { status ->
@@ -130,8 +155,8 @@ fun DashboardScreen(viewModel: DashboardViewModel = viewModel()) {
             )
         }
 
-        item {
+        /* item {
             ActivityCard()
-        }
+        } */
     }
 }

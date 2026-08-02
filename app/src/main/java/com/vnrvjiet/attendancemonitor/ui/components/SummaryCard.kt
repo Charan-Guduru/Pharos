@@ -49,8 +49,13 @@ fun SummaryCard(
             }
 
             Row(verticalAlignment = Alignment.Bottom) {
+                val displayPercentage = if (percentage % 1 == 0f) {
+                    percentage.toInt().toString()
+                } else {
+                    "%.1f".format(percentage)
+                }
                 Text(
-                    text = percentage.toString(),
+                    text = displayPercentage,
                     color = Color.White,
                     fontSize = 48.sp,
                     fontWeight = FontWeight.Bold
