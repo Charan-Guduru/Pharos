@@ -84,9 +84,9 @@ fun AboutScreen(
             Spacer(modifier = Modifier.height(40.dp))
 
             AboutInfoCard {
-                AboutInfoItem("Developer", "VNR VJIET Student")
+                AboutInfoItem("Developer by", "Raizen")
                 HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-                AboutInfoItem("Build Type", BuildConfig.BUILD_TYPE.uppercase())
+                AboutInfoItem("Build Type", "Version 1.0")
                 HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                 AboutInfoItem("Database Version", "5")
                 HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))

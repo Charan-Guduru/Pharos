@@ -110,6 +110,30 @@ fun LazyListScope.dailyTabContent(
     onMoreClick: (Long) -> Unit,
     viewModel: DashboardViewModel
 ) {
+    val actualToday = Calendar.getInstance().get(Calendar.DAY_OF_WEEK).let { if (it == Calendar.SUNDAY) 7 else it - 1 }
+    val isTodaySelected = uiState.selectedDay == actualToday
+    val currentMinutes = TimeUtils.getCurrentTimeInMinutes()
+
+    val nextEntryId = if (isTodaySelected) {
+        val attendanceRequiredClasses = uiState.timetable
+            .filter { it.subject.isAttendanceSubject }
+            .sortedBy { TimeUtils.parseTimeToMinutes(it.entry.startTime) }
+        
+        val runningClass = attendanceRequiredClasses.find { 
+            currentMinutes in TimeUtils.parseTimeToMinutes(it.entry.startTime)..TimeUtils.parseTimeToMinutes(it.entry.endTime)
+        }
+
+        if (runningClass != null) {
+            attendanceRequiredClasses.find { 
+                TimeUtils.parseTimeToMinutes(it.entry.startTime) > TimeUtils.parseTimeToMinutes(runningClass.entry.startTime) 
+            }?.entry?.id
+        } else {
+            attendanceRequiredClasses.find { 
+                TimeUtils.parseTimeToMinutes(it.entry.startTime) > currentMinutes 
+            }?.entry?.id
+        }
+    } else null
+
     item {
         if (uiState.isSynced) {
             SummaryCard(
@@ -201,16 +225,19 @@ fun LazyListScope.dailyTabContent(
     }
 
     items(uiState.timetable) { item ->
-        val currentMinutes = TimeUtils.getCurrentTimeInMinutes()
-        val startMinutes = TimeUtils.parseTimeToMinutes(item.entry.startTime)
-        val endMinutes = TimeUtils.parseTimeToMinutes(item.entry.endTime)
-        val isNow = currentMinutes in startMinutes..endMinutes
+        var isNow = false
+        if (isTodaySelected) {
+            val startMinutes = TimeUtils.parseTimeToMinutes(item.entry.startTime)
+            val endMinutes = TimeUtils.parseTimeToMinutes(item.entry.endTime)
+            isNow = currentMinutes in startMinutes..endMinutes
+        }
 
         AttendanceCard(
             subject = item.subject.subjectName,
             time = item.entry.startTime,
             isAttendancePeriod = item.subject.isAttendanceSubject,
             isNow = isNow,
+            isNext = item.entry.id == nextEntryId,
             accentColor = Color(item.subject.color),
             currentStatus = item.attendanceRecord?.status,
             onStatusSelected = { status ->

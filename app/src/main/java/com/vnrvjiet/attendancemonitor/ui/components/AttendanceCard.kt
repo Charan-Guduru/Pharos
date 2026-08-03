@@ -25,6 +25,7 @@ fun AttendanceCard(
     time: String,
     isAttendancePeriod: Boolean,
     isNow: Boolean = false,
+    isNext: Boolean = false,
     accentColor: Color = Color(0xFF6200EE),
     currentStatus: AttendanceStatus? = null,
     onStatusSelected: (AttendanceStatus) -> Unit = {},
@@ -58,13 +59,23 @@ fun AttendanceCard(
                             style = MaterialTheme.typography.labelMedium,
                             color = if (isNow) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        if (isNow) {
-                            Text(
-                                text = "NOW",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.error,
-                                fontWeight = FontWeight.Bold
-                            )
+                        if (isNow || isNext) {
+                            val badgeColor = if (isNow) Color(0xFF4CAF50) else MaterialTheme.colorScheme.primary
+                            val badgeText = if (isNow) "NOW" else "NEXT"
+                            
+                            Surface(
+                                color = badgeColor,
+                                shape = RoundedCornerShape(4.dp),
+                                modifier = Modifier.padding(top = 2.dp)
+                            ) {
+                                Text(
+                                    text = badgeText,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
                         }
                     }
 
@@ -73,7 +84,7 @@ fun AttendanceCard(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(2.dp))
+                Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = subject,
                     style = MaterialTheme.typography.titleLarge,
