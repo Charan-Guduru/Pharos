@@ -10,16 +10,26 @@ import com.vnrvjiet.attendancemonitor.data.model.SyncStatus
 import com.vnrvjiet.attendancemonitor.data.repository.RoomAttendanceRepository
 import com.vnrvjiet.attendancemonitor.data.repository.RoomSubjectRepository
 import com.vnrvjiet.attendancemonitor.data.repository.RoomTimetableRepository
+import com.vnrvjiet.attendancemonitor.util.TimeUtils
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.util.*
 
 data class DashboardUiState(
     val timetable: List<DashboardItem> = emptyList(),
+    val weeklyTimetable: List<WeeklyDayGroup> = emptyList(),
     val overallPercentage: Float = 0f,
     val isSynced: Boolean = false,
     val isTimetableConfigured: Boolean = true,
-    val isLoading: Boolean = true
+    val isLoading: Boolean = true,
+    val classesChange: Int = 0,
+    val isLead: Boolean = true
+)
+
+data class WeeklyDayGroup(
+    val dayOfWeek: Int,
+    val dayName: String,
+    val items: List<DashboardItem>
 )
 
 data class DashboardItem(
@@ -51,25 +61,26 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
         }
 
     val uiState: StateFlow<DashboardUiState> = combine(
-        timetableRepo.getTimetableForDay(currentDayOfWeek),
         timetableRepo.getAllTimetableEntries(),
         subjectRepo.getAllSubjects(),
         attendanceRepo.getRecordsForDate(todayMidnight),
         eduPrimeDao.getAllAttendance(),
         mappingDao.getAllMappings()
     ) { params: Array<Any?> ->
-        val todayTimetable = params[0] as List<TimetableEntryEntity>
-        val allEntries = params[1] as List<TimetableEntryEntity>
-        val subjects = params[2] as List<SubjectEntity>
-        val records = params[3] as List<AttendanceRecordEntity>
-        val remoteData = params[4] as List<EduPrimeAttendanceEntity>
-        val mappings = params[5] as List<SubjectMappingEntity>
+        val allEntries = params[0] as List<TimetableEntryEntity>
+        val subjects = params[1] as List<SubjectEntity>
+        val records = params[2] as List<AttendanceRecordEntity>
+        val remoteData = params[3] as List<EduPrimeAttendanceEntity>
+        val mappings = params[4] as List<SubjectMappingEntity>
 
         val mappingMap = mappings.associate { it.subjectCode to it.subjectName }
         
-        val items = todayTimetable.mapNotNull { entry ->
+        val allDashboardItems = allEntries.mapNotNull { entry ->
             subjects.find { it.id == entry.subjectId }?.let { subject ->
-                val record = records.find { it.timetableEntryId == entry.id }
+                val record = if (entry.dayOfWeek == currentDayOfWeek) {
+                    records.find { it.timetableEntryId == entry.id }
+                } else null
+                
                 val remote = remoteData.find { it.subjectCode == subject.subjectCode }
                 
                 val mappedSubject = subject.copy(
@@ -79,17 +90,42 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
                 DashboardItem(entry, mappedSubject, record, remote)
             }
         }
+
+        val todayItems = allDashboardItems.filter { it.entry.dayOfWeek == currentDayOfWeek }
+            .sortedBy { TimeUtils.parseTimeToMinutes(it.entry.startTime) }
+
+        val dayNames = listOf("", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday")
+        val weeklyGroups = (1..6).map { day ->
+            WeeklyDayGroup(
+                dayOfWeek = day,
+                dayName = dayNames[day],
+                items = allDashboardItems.filter { it.entry.dayOfWeek == day }
+                    .sortedBy { TimeUtils.parseTimeToMinutes(it.entry.startTime) }
+            )
+        }.filter { it.items.isNotEmpty() }
         
         val overallPresent = remoteData.sumOf { it.attendedClasses }
         val overallTotal = remoteData.sumOf { it.conductedClasses }
         val percentage = if (overallTotal > 0) (overallPresent.toFloat() / overallTotal) * 100 else 0f
         
+        val threshold = 0.75f
+        val isLead = (overallPresent.toFloat() / (if (overallTotal == 0) 1 else overallTotal)) >= threshold
+        
+        val classesChange = if (isLead) {
+            if (overallTotal == 0) 0 else kotlin.math.floor(overallPresent.toFloat() / threshold - overallTotal).toInt()
+        } else {
+            if (overallTotal == 0) 0 else kotlin.math.ceil((threshold * overallTotal - overallPresent) / (1 - threshold)).toInt()
+        }
+
         DashboardUiState(
-            timetable = items,
+            timetable = todayItems,
+            weeklyTimetable = weeklyGroups,
             overallPercentage = percentage,
             isSynced = remoteData.isNotEmpty(),
             isTimetableConfigured = allEntries.isNotEmpty(),
-            isLoading = false
+            isLoading = false,
+            classesChange = kotlin.math.max(0, classesChange),
+            isLead = isLead
         )
     }.stateIn(
         scope = viewModelScope,

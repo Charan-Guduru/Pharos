@@ -26,7 +26,8 @@ class DebugAttendanceViewModel(application: Application) : AndroidViewModel(appl
         db.eduPrimeAttendanceDao(),
         db.subjectMappingDao(),
         db.notificationDao(),
-        settingsRepo
+        settingsRepo,
+        application
     )
 
     private val _isLoading = MutableStateFlow(false)
@@ -34,9 +35,11 @@ class DebugAttendanceViewModel(application: Application) : AndroidViewModel(appl
 
     val uiState: StateFlow<DebugAttendanceUiState> = combine(
         syncRepo.syncedAttendance,
+        db.subjectMappingDao().getAllMappings(),
         _isLoading,
         _error
-    ) { remoteData, isLoading, error ->
+    ) { remoteData, mappings, isLoading, error ->
+        val mappingMap = mappings.associate { it.subjectCode to it.subjectName }
         when {
             isLoading -> DebugAttendanceUiState.Loading
             error != null -> DebugAttendanceUiState.Error(error)
@@ -45,7 +48,7 @@ class DebugAttendanceViewModel(application: Application) : AndroidViewModel(appl
                 val records = remoteData.map {
                     EduPrimeAttendanceRecord(
                         it.subjectCode,
-                        it.subjectName ?: "",
+                        mappingMap[it.subjectCode] ?: it.subjectName ?: it.subjectCode,
                         it.conductedClasses,
                         it.attendedClasses,
                         it.attendancePercentage

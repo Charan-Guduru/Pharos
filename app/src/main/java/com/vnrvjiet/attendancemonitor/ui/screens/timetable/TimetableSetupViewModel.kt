@@ -9,6 +9,7 @@ import com.vnrvjiet.attendancemonitor.data.local.entity.TimetableEntryEntity
 import com.vnrvjiet.attendancemonitor.data.repository.RoomSubjectRepository
 import com.vnrvjiet.attendancemonitor.data.repository.RoomTimetableRepository
 import com.vnrvjiet.attendancemonitor.data.repository.SubjectMappingRepository
+import com.vnrvjiet.attendancemonitor.util.TimeUtils
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
@@ -58,14 +59,16 @@ class TimetableSetupViewModel(application: Application) : AndroidViewModel(appli
         val mapped = mappings.map { SubjectDisplayModel(it.subjectCode, it.subjectName) }
         val mappingMap = mappings.associate { it.subjectCode to it.subjectName }
 
-        val dayEntries = allEntries.filter { it.dayOfWeek == day }.map { entry ->
-            val subject = subjects.find { it.id == entry.subjectId }
-            val name = if (subject != null) {
-                mappingMap[subject.subjectCode] ?: subject.subjectName
-            } else "Unknown"
-            
-            TimetableItemModel(entry, name)
-        }
+        val dayEntries = allEntries.filter { it.dayOfWeek == day }
+            .sortedBy { TimeUtils.parseTimeToMinutes(it.startTime) }
+            .map { entry ->
+                val subject = subjects.find { it.id == entry.subjectId }
+                val name = if (subject != null) {
+                    mappingMap[subject.subjectCode] ?: subject.subjectName
+                } else "Unknown"
+                
+                TimetableItemModel(entry, name)
+            }
         
         TimetableSetupUiState(
             mappedSubjects = mapped,

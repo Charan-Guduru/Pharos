@@ -5,6 +5,7 @@ import com.vnrvjiet.attendancemonitor.data.local.dao.NotificationDao
 import com.vnrvjiet.attendancemonitor.data.local.dao.SubjectMappingDao
 import com.vnrvjiet.attendancemonitor.data.local.entity.EduPrimeAttendanceEntity
 import com.vnrvjiet.attendancemonitor.data.local.entity.NotificationEntity
+import com.vnrvjiet.attendancemonitor.util.NotificationHelper
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 
@@ -13,7 +14,8 @@ class SyncRepository(
     private val attendanceDao: EduPrimeAttendanceDao,
     private val mappingDao: SubjectMappingDao,
     private val notificationDao: NotificationDao,
-    private val settingsRepo: SettingsRepository
+    private val settingsRepo: SettingsRepository,
+    private val context: android.content.Context? = null
 ) {
     val syncedAttendance: Flow<List<EduPrimeAttendanceEntity>> = attendanceDao.getAllAttendance()
 
@@ -60,6 +62,9 @@ class SyncRepository(
                 type = "SYNC_FAILED",
                 timestamp = System.currentTimeMillis()
             ))
+            context?.let {
+                NotificationHelper.showNotification(it, "Synchronization Failed", "Unable to synchronize with EduPrime.", 999)
+            }
             Result.failure(fetchResult.exceptionOrNull() ?: Exception("Sync failed"))
         }
     }

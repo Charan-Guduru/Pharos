@@ -27,7 +27,8 @@ class SyncStatusViewModel(application: Application) : AndroidViewModel(applicati
         db.eduPrimeAttendanceDao(),
         db.subjectMappingDao(),
         db.notificationDao(),
-        settingsRepo
+        settingsRepo,
+        application
     )
 
     val lastManualSyncAt = settingsRepo.lastManualSyncAt

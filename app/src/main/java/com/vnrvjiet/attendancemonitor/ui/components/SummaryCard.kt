@@ -13,7 +13,8 @@ import androidx.compose.ui.unit.sp
 @Composable
 fun SummaryCard(
     percentage: Float,
-    classesLead: Int = 0
+    classesChange: Int = 0,
+    isLead: Boolean = true
 ) {
     Card(
         modifier = Modifier
@@ -41,7 +42,7 @@ fun SummaryCard(
                     shape = RoundedCornerShape(12.dp)
                 ) {
                     Text(
-                        text = "SAFE",
+                        text = if (percentage >= 75f) "SAFE" else "LOW",
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                         color = MaterialTheme.colorScheme.onPrimary,
                         fontSize = 12.sp,
@@ -87,7 +88,7 @@ fun SummaryCard(
             Spacer(modifier = Modifier.height(8.dp))
             
             Text(
-                text = "+$classesLead classes lead",
+                text = if (isLead) "+$classesChange classes lead" else "Need $classesChange classes",
                 modifier = Modifier.align(Alignment.End),
                 color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.9f),
                 style = MaterialTheme.typography.labelMedium

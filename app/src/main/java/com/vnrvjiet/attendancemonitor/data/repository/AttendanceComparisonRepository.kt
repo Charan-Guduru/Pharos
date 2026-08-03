@@ -107,6 +107,7 @@ class AttendanceComparisonRepository {
 
             ComparisonResult(
                 subjectCode = remote.subjectCode,
+                subjectName = remote.subjectName,
                 prevConducted = prevConducted,
                 currConducted = currConducted,
                 prevAttended = prevAttended,

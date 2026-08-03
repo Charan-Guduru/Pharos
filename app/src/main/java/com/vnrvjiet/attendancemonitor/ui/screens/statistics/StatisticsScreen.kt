@@ -41,12 +41,41 @@ fun StatisticsScreen(viewModel: StatisticsViewModel = viewModel()) {
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                 ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            "Overall Summary", 
+                            style = MaterialTheme.typography.titleMedium, 
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            SummaryItem("Total Conducted", uiState.totalConducted.toString())
+                            SummaryItem("Total Attended", uiState.totalAttended.toString())
+                        }
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            val changeText = if (uiState.isLead) "+${uiState.classesChange} (Lead)" else "${uiState.classesChange} (Needed)"
+                            SummaryItem("Status", changeText)
+                            SummaryItem("Last Sync", uiState.lastSyncFormatted)
+                        }
+                    }
+                }
+            }
+
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {
                     Column(
                         modifier = Modifier.padding(24.dp).fillMaxWidth(),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
-                            "Overall Attendance", 
+                            "Attendance Analysis", 
                             style = MaterialTheme.typography.titleMedium, 
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface
@@ -62,6 +91,38 @@ fun StatisticsScreen(viewModel: StatisticsViewModel = viewModel()) {
             }
 
             item {
+                Card(
+                    modifier = Modifier.fillMaxWidth().height(300.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            "Subject Comparison", 
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Spacer(modifier = Modifier.height(24.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth().weight(1f), 
+                            horizontalArrangement = Arrangement.SpaceEvenly, 
+                            verticalAlignment = Alignment.Bottom
+                        ) {
+                            uiState.subjectStats.forEach { stat ->
+                                val riskColor = when {
+                                    stat.percentage >= 80 -> Color(0xFF4CAF50)
+                                    stat.percentage >= 75 -> Color(0xFFFFC107)
+                                    stat.percentage >= 65 -> Color(0xFFFF9800)
+                                    else -> Color(0xFFF44336)
+                                }
+                                Bar(fraction = stat.percentage / 100f, color = riskColor, label = stat.subjectName.take(3).uppercase())
+                            }
+                        }
+                    }
+                }
+            }
+
+            item {
                 Text(
                     "Subject Breakdown", 
                     style = MaterialTheme.typography.titleMedium, 
@@ -71,37 +132,23 @@ fun StatisticsScreen(viewModel: StatisticsViewModel = viewModel()) {
             }
 
             items(uiState.subjectStats) { stat ->
+                val riskColor = when {
+                    stat.percentage >= 80 -> Color(0xFF4CAF50)
+                    stat.percentage >= 75 -> Color(0xFFFFC107)
+                    stat.percentage >= 65 -> Color(0xFFFF9800)
+                    else -> Color(0xFFF44336)
+                }
+                
                 SubjectStatCard(
                     subject = stat.subjectName,
                     percentage = stat.percentage,
-                    subtitle = stat.classesDisplay,
-                    color = Color(stat.color),
+                    attended = stat.attended,
+                    conducted = stat.conducted,
+                    classesChange = stat.classesChange,
+                    isLead = stat.isLead,
+                    color = riskColor,
                     status = stat.status
                 )
-            }
-
-            item {
-                Card(
-                    modifier = Modifier.fillMaxWidth().height(250.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text(
-                            "Weekly Trend", 
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Spacer(modifier = Modifier.weight(1f))
-                        Row(modifier = Modifier.fillMaxWidth().height(150.dp), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.Bottom) {
-                            Bar(0.4f)
-                            Bar(0.6f)
-                            Bar(0.7f)
-                            Bar(0.9f)
-                            Bar(0.8f)
-                        }
-                    }
-                }
             }
             
             item {
@@ -230,7 +277,24 @@ fun CircularAttendanceIndicator(percentage: Float) {
 }
 
 @Composable
-fun SubjectStatCard(subject: String, percentage: Int, subtitle: String, color: Color, status: String) {
+fun SummaryItem(label: String, value: String) {
+    Column {
+        Text(text = label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(text = value, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+    }
+}
+
+@Composable
+fun SubjectStatCard(
+    subject: String, 
+    percentage: Int, 
+    attended: Int,
+    conducted: Int,
+    classesChange: Int,
+    isLead: Boolean,
+    color: Color, 
+    status: String
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -278,12 +342,20 @@ fun SubjectStatCard(subject: String, percentage: Int, subtitle: String, color: C
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Spacer(modifier = Modifier.weight(1f))
-                Text(
-                    text = subtitle, 
-                    fontSize = 14.sp, 
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontWeight = FontWeight.Medium
-                )
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(
+                        text = "$attended / $conducted Classes", 
+                        fontSize = 14.sp, 
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Text(
+                        text = if (isLead) "+$classesChange Lead" else "$classesChange Needed",
+                        fontSize = 12.sp,
+                        color = if (isLead) Color(0xFF4CAF50) else Color(0xFFF44336),
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
             Spacer(modifier = Modifier.height(12.dp))
             LinearProgressIndicator(
@@ -298,11 +370,15 @@ fun SubjectStatCard(subject: String, percentage: Int, subtitle: String, color: C
 }
 
 @Composable
-fun Bar(fraction: Float) {
-    Box(
-        modifier = Modifier
-            .width(40.dp)
-            .fillMaxHeight(fraction)
-            .background(Color(0xFF0D47A1).copy(alpha = fraction), RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp))
-    )
+fun Bar(fraction: Float, color: Color, label: String) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(
+            modifier = Modifier
+                .width(32.dp)
+                .fillMaxHeight(fraction.coerceIn(0.05f, 1f))
+                .background(color, RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp))
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(text = label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
 }

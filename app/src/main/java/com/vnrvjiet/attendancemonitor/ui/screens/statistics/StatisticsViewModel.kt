@@ -9,12 +9,20 @@ import com.vnrvjiet.attendancemonitor.data.repository.SyncRepository
 import com.vnrvjiet.attendancemonitor.data.repository.EduPrimeRepository
 import com.vnrvjiet.attendancemonitor.data.repository.SettingsRepository
 import kotlinx.coroutines.flow.*
+import java.text.SimpleDateFormat
+import java.util.*
 import kotlin.math.ceil
 import kotlin.math.floor
 import kotlin.math.max
 
 data class StatisticsUiState(
     val overallPercentage: Float = 0f,
+    val totalConducted: Int = 0,
+    val totalAttended: Int = 0,
+    val classesChange: Int = 0,
+    val isLead: Boolean = true,
+    val riskLevel: String = "SAFE",
+    val lastSyncFormatted: String = "Never",
     val safeLeave75: Int = 0,
     val safeLeave80: Int = 0,
     val classesNeeded75: Int = 0,
@@ -26,7 +34,10 @@ data class StatisticsUiState(
 data class SubjectStatUiModel(
     val subjectName: String,
     val percentage: Int,
-    val classesDisplay: String,
+    val attended: Int,
+    val conducted: Int,
+    val classesChange: Int,
+    val isLead: Boolean,
     val color: Int,
     val status: String
 )
@@ -40,41 +51,70 @@ class StatisticsViewModel(application: Application) : AndroidViewModel(applicati
         db.eduPrimeAttendanceDao(),
         db.subjectMappingDao(),
         db.notificationDao(),
-        settingsRepo
+        settingsRepo,
+        application
     )
 
     val uiState: StateFlow<StatisticsUiState> = combine(
         subjectRepo.getAllSubjects(),
         syncRepo.syncedAttendance,
-        db.subjectMappingDao().getAllMappings()
-    ) { subjects, remoteData, mappings ->
+        db.subjectMappingDao().getAllMappings(),
+        settingsRepo.lastVerified
+    ) { subjects, remoteData, mappings, lastSync ->
         if (remoteData.isEmpty()) {
             return@combine StatisticsUiState(isEmpty = true)
         }
 
         val mappingMap = mappings.associate { it.subjectCode to it.subjectName }
+        val threshold = 0.75f
 
         // Aggregate Overall Stats
         val overallPresent = remoteData.sumOf { it.attendedClasses }
         val overallTotal = remoteData.sumOf { it.conductedClasses }
         val overallPercentage = if (overallTotal > 0) (overallPresent.toFloat() / overallTotal) * 100 else 0f
         
+        val isOverallLead = (overallPresent.toFloat() / (if (overallTotal == 0) 1 else overallTotal)) >= threshold
+        val overallClassesChange = if (isOverallLead) {
+            calculateSafeLeave(overallPresent, overallTotal, threshold)
+        } else {
+            calculateClassesNeeded(overallPresent, overallTotal, threshold)
+        }
+
         // Subject-wise Stats
         val subjectStats = remoteData.map { remote ->
             val localSubject = subjects.find { it.subjectCode == remote.subjectCode }
             val mappedName = mappingMap[remote.subjectCode] ?: remote.subjectName ?: remote.subjectCode
             
+            val isLead = (remote.attendedClasses.toFloat() / (if (remote.conductedClasses == 0) 1 else remote.conductedClasses)) >= threshold
+            val classesChange = if (isLead) {
+                calculateSafeLeave(remote.attendedClasses, remote.conductedClasses, threshold)
+            } else {
+                calculateClassesNeeded(remote.attendedClasses, remote.conductedClasses, threshold)
+            }
+
             SubjectStatUiModel(
                 subjectName = mappedName,
                 percentage = remote.attendancePercentage.toInt(),
-                classesDisplay = "${remote.attendedClasses}/${remote.conductedClasses} Classes",
+                attended = remote.attendedClasses,
+                conducted = remote.conductedClasses,
+                classesChange = classesChange,
+                isLead = isLead,
                 color = localSubject?.color ?: 0xFF9E9E9E.toInt(),
                 status = getStatusLabel(remote.attendancePercentage.toFloat())
             )
         }
 
+        val sdf = SimpleDateFormat("dd MMM, HH:mm", Locale.getDefault())
+        val lastSyncStr = if (lastSync == 0L) "Never" else sdf.format(Date(lastSync))
+
         StatisticsUiState(
             overallPercentage = overallPercentage,
+            totalConducted = overallTotal,
+            totalAttended = overallPresent,
+            classesChange = overallClassesChange,
+            isLead = isOverallLead,
+            riskLevel = getStatusLabel(overallPercentage),
+            lastSyncFormatted = lastSyncStr,
             safeLeave75 = calculateSafeLeave(overallPresent, overallTotal, 0.75f),
             safeLeave80 = calculateSafeLeave(overallPresent, overallTotal, 0.80f),
             classesNeeded75 = calculateClassesNeeded(overallPresent, overallTotal, 0.75f),
@@ -93,7 +133,6 @@ class StatisticsViewModel(application: Application) : AndroidViewModel(applicati
         val currentPercentage = present.toFloat() / total
         if (currentPercentage < threshold) return 0
         
-        // P / (T + M) >= G  => M <= (P / G) - T
         val maxTotal = present / threshold
         return floor(maxTotal - total).toInt()
     }
@@ -103,7 +142,6 @@ class StatisticsViewModel(application: Application) : AndroidViewModel(applicati
         val currentPercentage = present.toFloat() / total
         if (currentPercentage >= threshold) return 0
         
-        // (P + x) / (T + x) >= G => x >= (G*T - P) / (1 - G)
         val needed = ceil((threshold * total - present) / (1 - threshold))
         return max(0, needed.toInt())
     }

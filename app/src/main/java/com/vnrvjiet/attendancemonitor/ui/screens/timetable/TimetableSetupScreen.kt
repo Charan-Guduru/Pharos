@@ -73,7 +73,7 @@ fun TimetableSetupScreen(
                     .padding(vertical = 8.dp),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                val days = listOf("M", "T", "W", "T", "F", "S", "S")
+                val days = listOf("M", "T", "W", "T", "F", "S")
                 days.forEachIndexed { index, day ->
                     val dayNum = index + 1
                     FilterChip(
@@ -155,7 +155,7 @@ fun PeriodItem(item: TimetableItemModel, onDelete: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Column {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = "${item.entry.startTime} - ${item.entry.endTime}", 
                     style = MaterialTheme.typography.labelMedium, 
@@ -165,7 +165,9 @@ fun PeriodItem(item: TimetableItemModel, onDelete: () -> Unit) {
                     text = item.subjectName, 
                     style = MaterialTheme.typography.titleMedium, 
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 2,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                 )
             }
             IconButton(onClick = onDelete) {

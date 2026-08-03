@@ -1,6 +1,7 @@
 package com.vnrvjiet.attendancemonitor.worker
 
 import android.content.Context
+import android.util.Log
 import androidx.room.withTransaction
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
@@ -8,6 +9,7 @@ import com.vnrvjiet.attendancemonitor.data.local.AppDatabase
 import com.vnrvjiet.attendancemonitor.data.model.AttendanceStatus
 import com.vnrvjiet.attendancemonitor.data.model.VerificationState
 import com.vnrvjiet.attendancemonitor.data.repository.*
+import com.vnrvjiet.attendancemonitor.util.NotificationHelper
 import kotlinx.coroutines.flow.first
 import java.util.*
 
@@ -16,20 +18,26 @@ class AttendanceSyncWorker(
     params: WorkerParameters
 ) : CoroutineWorker(context, params) {
 
+    private val WORK_TAG = "WorkManager"
+
     override suspend fun doWork(): Result {
+        Log.d(WORK_TAG, "Worker started")
         val database = AppDatabase.getDatabase(applicationContext)
         val settingsRepo = SettingsRepository(applicationContext)
         
         // 1. Check if Auto Sync is enabled
         if (!settingsRepo.autoSync.first()) {
+            Log.d(WORK_TAG, "Auto Sync disabled, finishing")
             return Result.success()
         }
 
         // 2. Check Time Windows (09:00, 10:00, 12:30, 02:00, 05:00)
-        // Simplified window check: allow sync if within 30 mins of target
         if (!isInSyncWindow()) {
+            Log.d(WORK_TAG, "Outside sync window, finishing")
             return Result.success()
         }
+
+        Log.d(WORK_TAG, "Within sync window, proceeding")
 
         val eduPrimeRepo = EduPrimeRepository()
         val syncRepo = SyncRepository(
@@ -37,22 +45,28 @@ class AttendanceSyncWorker(
             database.eduPrimeAttendanceDao(),
             database.subjectMappingDao(),
             database.notificationDao(),
-            settingsRepo
+            settingsRepo,
+            applicationContext
         )
 
         return try {
+            Log.d(WORK_TAG, "Synchronization started")
             val syncResult = syncRepo.performSync()
             if (syncResult.isSuccess) {
+                Log.d(WORK_TAG, "Synchronization completed successfully")
                 settingsRepo.setLastAutoSyncAt(System.currentTimeMillis())
                 
-                // 3. Trigger Verification Engine (driven by Comparison logic)
+                // 3. Trigger Verification Engine
                 performVerificationUpdate(database, eduPrimeRepo, syncRepo)
                 
+                Log.d(WORK_TAG, "Worker finished successfully")
                 Result.success()
             } else {
+                Log.d(WORK_TAG, "Synchronization failed: ${syncResult.exceptionOrNull()?.message}")
                 Result.retry()
             }
         } catch (e: Exception) {
+            Log.e(WORK_TAG, "Worker failed with exception", e)
             Result.retry()
         }
     }
@@ -71,8 +85,9 @@ class AttendanceSyncWorker(
             17 * 60         // 05:00 PM
         )
 
-        // Return true if current time is within 30 mins after any window
-        return windows.any { window -> currentMinutes in window..(window + 30) }
+        val result = windows.any { window -> currentMinutes in window..(window + 30) }
+        Log.d(WORK_TAG, "Time check: currentMinutes=$currentMinutes, inWindow=$result")
+        return result
     }
 
     private suspend fun performVerificationUpdate(
@@ -107,7 +122,6 @@ class AttendanceSyncWorker(
 
         val (_, updatedRecords) = comparisonRepo.compare(localRecords, timetable, subjects, remoteRecords)
         
-        // Update records and notify
         val timetableToSubjectCode = timetable.associate { it.id to (subjects.find { s -> s.id == it.subjectId }?.subjectCode ?: "UNKNOWN") }
         
         db.withTransaction {
@@ -123,12 +137,15 @@ class AttendanceSyncWorker(
                         old.verificationState == VerificationState.PENDING && new.verificationState == VerificationState.VERIFIED -> {
                             if (new.status == AttendanceStatus.BUNK) {
                                 notificationRepo.addNotification("Attendance Granted", "You received attendance for $subjectName.", "UNEXPECTED")
+                                NotificationHelper.showNotification(applicationContext, "Attendance Granted", "You received attendance for $subjectName.", new.id.toInt())
                             } else {
                                 notificationRepo.addNotification("Attendance Verified", "Your attendance for $subjectName has been verified.", "VERIFIED")
+                                NotificationHelper.showNotification(applicationContext, "Attendance Verified", "Your attendance for $subjectName has been verified.", new.id.toInt())
                             }
                         }
                         old.verificationState == VerificationState.PENDING && new.verificationState == VerificationState.MISMATCH -> {
                             notificationRepo.addNotification("Attendance Mismatch", "Your attendance for $subjectName differs from EduPrime.", "MISMATCH")
+                            NotificationHelper.showNotification(applicationContext, "Attendance Mismatch", "Your attendance for $subjectName differs from EduPrime.", new.id.toInt())
                         }
                     }
                 }

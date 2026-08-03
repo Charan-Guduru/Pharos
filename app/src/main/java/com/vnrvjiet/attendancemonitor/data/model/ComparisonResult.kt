@@ -16,6 +16,7 @@ enum class MatchStatus {
 
 data class ComparisonResult(
     val subjectCode: String,
+    val subjectName: String,
     val prevConducted: Int,
     val currConducted: Int,
     val prevAttended: Int,

@@ -136,7 +136,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
             workManager.enqueueUniquePeriodicWork(
                 "AttendanceSync",
-                ExistingPeriodicWorkPolicy.KEEP,
+                ExistingPeriodicWorkPolicy.REPLACE,
                 syncRequest
             )
         } else {

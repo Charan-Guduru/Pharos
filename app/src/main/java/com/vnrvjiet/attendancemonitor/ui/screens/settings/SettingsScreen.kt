@@ -265,7 +265,7 @@ fun SettingsScreen(
                     modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
                 ) {
                     Text(
-                        text = "Sync Schedule: 09:00 AM, 10:00 AM, 12:30 PM, 02:00 PM, 05:00 PM",
+                        text =  "Keeps your attendance synchronized automatically in the background.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(12.dp)
@@ -409,7 +409,6 @@ fun SettingsScreen(
         }
     }
 }
-
 @Composable
 fun SettingsSection(title: String, content: @Composable ColumnScope.() -> Unit) {
     Column {

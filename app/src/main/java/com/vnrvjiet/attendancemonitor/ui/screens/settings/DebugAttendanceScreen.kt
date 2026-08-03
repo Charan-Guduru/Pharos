@@ -154,10 +154,15 @@ fun ComparisonItem(result: ComparisonResult) {
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
-                text = "Subject: ${result.subjectCode}",
+                text = result.subjectName,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                text = result.subjectCode,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))

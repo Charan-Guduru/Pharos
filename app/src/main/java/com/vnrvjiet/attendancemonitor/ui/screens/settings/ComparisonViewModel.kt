@@ -32,7 +32,8 @@ class ComparisonViewModel(application: Application) : AndroidViewModel(applicati
         database.eduPrimeAttendanceDao(),
         database.subjectMappingDao(),
         database.notificationDao(),
-        settingsRepo
+        settingsRepo,
+        application
     )
 
     private val _isLoading = MutableStateFlow(false)
@@ -99,7 +100,7 @@ class ComparisonViewModel(application: Application) : AndroidViewModel(applicati
                 // Update Room
                 attendanceRepo.updateRecord(new)
                 
-                // Trigger Notifications
+                // Trigger Notifications AFTER Room update
                 val subjectCode = timetableToSubjectCode[new.timetableEntryId] ?: "UNKNOWN"
                 val subjectName = mappingMap[subjectCode] ?: subjectCode
                 
