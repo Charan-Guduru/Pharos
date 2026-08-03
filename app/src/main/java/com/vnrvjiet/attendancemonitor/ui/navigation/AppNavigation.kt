@@ -12,10 +12,12 @@ import com.vnrvjiet.attendancemonitor.ui.components.BottomNavigationBar
 import com.vnrvjiet.attendancemonitor.ui.components.DashboardTopBar
 import com.vnrvjiet.attendancemonitor.ui.screens.dashboard.DashboardScreen
 import com.vnrvjiet.attendancemonitor.ui.screens.history.HistoryScreen
-import com.vnrvjiet.attendancemonitor.ui.screens.login.LoginScreen
 import com.vnrvjiet.attendancemonitor.ui.screens.notifications.NotificationsScreen
 import com.vnrvjiet.attendancemonitor.ui.screens.setup.SemesterSetupScreen
-import com.vnrvjiet.attendancemonitor.ui.screens.settings.*
+import com.vnrvjiet.attendancemonitor.ui.screens.settings.AboutScreen
+import com.vnrvjiet.attendancemonitor.ui.screens.settings.LicensesScreen
+import com.vnrvjiet.attendancemonitor.ui.screens.settings.PrivacyPolicyScreen
+import com.vnrvjiet.attendancemonitor.ui.screens.settings.SettingsScreen
 import com.vnrvjiet.attendancemonitor.ui.screens.timetable.TimetableSetupScreen
 import com.vnrvjiet.attendancemonitor.ui.screens.statistics.StatisticsScreen
 import com.vnrvjiet.attendancemonitor.ui.screens.sync.SyncStatusScreen
@@ -30,9 +32,6 @@ fun AppNavigation() {
         navController = navController,
         startDestination = Screen.Dashboard.route
     ) {
-        composable(Screen.Login.route) {
-            LoginScreen()
-        }
         composable(Screen.Dashboard.route) {
             DashboardScaffold(
                 navController = navController,

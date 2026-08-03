@@ -5,7 +5,6 @@ import com.vnrvjiet.attendancemonitor.BuildConfig
 import com.vnrvjiet.attendancemonitor.data.model.EduPrimeAttendanceRecord
 import com.vnrvjiet.attendancemonitor.data.model.LoginResult
 import com.vnrvjiet.attendancemonitor.data.remote.EduPrimeApi
-import com.vnrvjiet.attendancemonitor.data.remote.EduPrimeJsonResponse
 import com.vnrvjiet.attendancemonitor.data.remote.SessionCookieJar
 import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
@@ -19,7 +18,7 @@ import java.net.UnknownHostException
 import java.util.concurrent.TimeUnit
 
 class EduPrimeRepository {
-    private val TAG = "EduPrimeAuth"
+    private val TAG = "EduPrimeRepo"
     private val cookieJar = SessionCookieJar()
     private val BASE_URL = "https://automation.vnrvjiet.ac.in/"
     
@@ -32,12 +31,11 @@ class EduPrimeRepository {
         
         if (BuildConfig.DEBUG) {
             val logging = HttpLoggingInterceptor { message ->
-                // Scrub sensitive data from logs
                 var safeMessage = message
                 val sensitiveKeys = listOf("xpassword", "password", "Cookie", "Token", "__RequestVerificationToken")
                 sensitiveKeys.forEach { key ->
                     if (safeMessage.contains(key, ignoreCase = true)) {
-                        safeMessage = "[SCRUBBED SENSITIVE DATA]"
+                        safeMessage = "[SCRUBBED]"
                     }
                 }
                 Log.d("EduPrimeWire", safeMessage)
@@ -59,20 +57,12 @@ class EduPrimeRepository {
         return try {
             cookieJar.clear()
             performLogin(user, pass, dob)
-        } catch (e: SecurityException) {
-            Log.e(TAG, "SecurityException: Missing permissions?", e)
-            LoginResult.Error("Security: ${e.message}")
         } catch (e: UnknownHostException) {
-            Log.e(TAG, "UnknownHostException: No internet or DNS failure", e)
             LoginResult.NetworkUnavailable
         } catch (e: SocketTimeoutException) {
-            Log.e(TAG, "SocketTimeoutException: Server timed out", e)
             LoginResult.Timeout
-        } catch (e: java.io.IOException) {
-            Log.e(TAG, "IOException during network call", e)
-            LoginResult.Error("IO: ${e.message}")
         } catch (e: Exception) {
-            Log.e(TAG, "Unexpected exception during auth", e)
+            Log.e(TAG, "Auth failed: ${e.message}")
             LoginResult.Error(e.message ?: "Unknown error")
         } finally {
             cookieJar.clear()
@@ -84,20 +74,16 @@ class EduPrimeRepository {
             return LoginResult.InvalidCredentials
         }
 
-        // 1. GET Login Page for Cookies & Token
         val loginPageResponse = api.getLoginPage()
         if (!loginPageResponse.isSuccessful) return LoginResult.HttpError(loginPageResponse.code())
         
         val html = loginPageResponse.body() ?: return LoginResult.UnexpectedResponse
-        
-        // 2. Extract Token and Captcha Info
         val document = Jsoup.parse(html)
         val token = document.select("input[name=__RequestVerificationToken]").`val`() ?: ""
         val captchaId = document.select("input[name=xCaptchaId]").`val`() ?: ""
         
         if (token.isEmpty()) return LoginResult.TokenExtractionFailed
 
-        // 3. POST Login (Multipart)
         val loginResponse = api.login(
             tokenHeader = token,
             referer = BASE_URL,
@@ -111,8 +97,6 @@ class EduPrimeRepository {
         )
         
         val responseBody = loginResponse.body() ?: ""
-        
-        // Success Detection: Server returns {"Status":1, ...} for success
         val isStatusSuccess = responseBody.contains("\"Status\":1")
         val isStatusFailure = responseBody.contains("\"Status\":0") || responseBody.contains("Invalid Username or Password", ignoreCase = true)
         
@@ -129,70 +113,49 @@ class EduPrimeRepository {
         return try {
             cookieJar.clear()
             
-            // 1. Login
             val loginResult = performLogin(user, pass, dob)
             if (loginResult !is LoginResult.Success) {
-                return Result.failure(Exception("Login failed: $loginResult"))
+                return Result.failure(Exception("Login failed"))
             }
 
-            // 2. Obtain Student ID from STDINFO widget
             val stdInfoResponse = api.getStdInfo()
             if (!stdInfoResponse.isSuccessful) {
-                return Result.failure(Exception("Failed to load STDINFO: ${stdInfoResponse.code()}"))
+                return Result.failure(Exception("Portal communication failed"))
             }
-            Log.d(TAG, "✓ STDINFO request succeeded")
             
-            val stdInfoHtml = stdInfoResponse.body() ?: return Result.failure(Exception("Empty STDINFO body"))
-            val studentId = extractStudentId(stdInfoHtml) ?: return Result.failure(Exception("Student ID not found in portal"))
+            val stdInfoHtml = stdInfoResponse.body() ?: return Result.failure(Exception("Empty response"))
+            val studentId = extractStudentId(stdInfoHtml) ?: return Result.failure(Exception("Data inaccessible"))
             
-            Log.d(TAG, "✓ studentId extracted")
-            Log.d(TAG, "studentId length: ${studentId.length}")
-
-            // 3. Fetch Attendance JSON Data
             val attendanceResponse = api.getAttendanceData(studentId)
             if (!attendanceResponse.isSuccessful) {
-                return Result.failure(Exception("HTTP Error ${attendanceResponse.code()}"))
+                return Result.failure(Exception("HTTP ${attendanceResponse.code()}"))
             }
 
-            val jsonResponse = attendanceResponse.body() ?: return Result.failure(Exception("Empty JSON response"))
-            Log.d(TAG, "JSON Status: ${jsonResponse.status}")
-            
+            val jsonResponse = attendanceResponse.body() ?: return Result.failure(Exception("Invalid format"))
             if (jsonResponse.status != 1) {
-                return Result.failure(Exception("Server returned status ${jsonResponse.status}"))
+                return Result.failure(Exception("Request rejected by server"))
             }
 
-            // 4. Parse HTML fragment in Data field
-            val htmlFragment = jsonResponse.data
-            val doc = Jsoup.parse(htmlFragment)
-            
-            // Locate the table by finding the one whose first row contains "Cumulative"
+            val doc = Jsoup.parse(jsonResponse.data)
             val table = doc.select("table").firstOrNull { table ->
                 table.select("tr").firstOrNull()?.text()?.contains("Cumulative", ignoreCase = true) == true
             }
 
-            if (table == null) {
-                Log.w(TAG, "Attendance table with 'Cumulative' header not found")
-                return Result.success(emptyList())
-            }
+            if (table == null) return Result.success(emptyList())
 
             val records = mutableListOf<EduPrimeAttendanceRecord>()
-            val rows = table.select("tr").drop(1) // Skip the first header row
+            val rows = table.select("tr").drop(1)
 
             rows.forEach { row ->
                 val th = row.selectFirst("th")
                 val cells = row.select("td")
                 val rowText = row.text()
 
-                // Skip "Total" row
-                if (th?.text()?.contains("Total", ignoreCase = true) == true || 
-                    rowText.contains("Total", ignoreCase = true)) {
+                if (th?.text()?.contains("Total", ignoreCase = true) == true || rowText.contains("Total", ignoreCase = true)) {
                     return@forEach
                 }
 
-                // Subject Code is in TH
                 val subjectCode = th?.text()?.trim() ?: ""
-                
-                // Cumulative attendance is in the last TD (usually the 2nd TD in this specific structure)
                 val cumulativeCell = cells.lastOrNull()?.text()?.trim() ?: ""
 
                 if (subjectCode.isNotEmpty() && cumulativeCell.contains("/")) {
@@ -203,26 +166,23 @@ class EduPrimeRepository {
                             val conducted = parts[1].toIntOrNull() ?: 0
                             val percentage = if (conducted > 0) (attended.toDouble() / conducted * 100) else 0.0
 
-                            Log.d(TAG, "Parsed Subject: $subjectCode, Attended: $attended, Conducted: $conducted")
-                            
                             records.add(EduPrimeAttendanceRecord(
                                 subjectCode = subjectCode,
-                                subjectName = subjectCode, // Using code as name since name is not in this specific row structure
+                                subjectName = subjectCode,
                                 conductedClasses = conducted,
                                 attendedClasses = attended,
                                 attendancePercentage = percentage
                             ))
                         }
                     } catch (e: Exception) {
-                        Log.e(TAG, "Error parsing row: $rowText", e)
+                        // Silent skip
                     }
                 }
             }
 
-            Log.d(TAG, "Total subjects parsed: ${records.size}")
             Result.success(records)
         } catch (e: Exception) {
-            Log.e(TAG, "Error fetching attendance", e)
+            Log.e(TAG, "Sync error", e)
             Result.failure(e)
         } finally {
             try { api.logout() } catch (e: Exception) { /* Ignore */ }
@@ -231,16 +191,12 @@ class EduPrimeRepository {
     }
 
     private fun extractStudentId(html: String): String? {
-        // Robust extraction from STDINFO: GetStdAttPer?studentId=...&semId=
         val studentIdRegex = "GetStdAttPer\\?studentId=([^&]+)".toRegex(RegexOption.IGNORE_CASE)
         val match = studentIdRegex.find(html)
         val studentId = match?.groupValues?.get(1)
         
-        if (!studentId.isNullOrEmpty()) {
-            return studentId
-        }
+        if (!studentId.isNullOrEmpty()) return studentId
         
-        // Fallback: try direct variable search
         val jsRegex = "studentId\\s*[:=]\\s*['\"]([^'\"]+)['\"]".toRegex(RegexOption.IGNORE_CASE)
         jsRegex.find(html)?.groupValues?.get(1)?.let { return it }
         

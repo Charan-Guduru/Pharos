@@ -4,12 +4,12 @@ import com.vnrvjiet.attendancemonitor.data.local.dao.AttendanceDao
 import com.vnrvjiet.attendancemonitor.data.local.entity.AttendanceRecordEntity
 import kotlinx.coroutines.flow.Flow
 
-class RoomAttendanceRepository(private val attendanceDao: AttendanceDao) : AttendanceRepository {
-    override fun getAllRecords(): Flow<List<AttendanceRecordEntity>> {
+class RoomAttendanceRepository(private val attendanceDao: AttendanceDao) {
+    fun getAllRecords(): Flow<List<AttendanceRecordEntity>> {
         return attendanceDao.getAllRecords()
     }
 
-    override fun getRecordsForDate(date: Long): Flow<List<AttendanceRecordEntity>> {
+    fun getRecordsForDate(date: Long): Flow<List<AttendanceRecordEntity>> {
         return attendanceDao.getRecordsForDate(date)
     }
 
@@ -17,15 +17,15 @@ class RoomAttendanceRepository(private val attendanceDao: AttendanceDao) : Atten
         return attendanceDao.getRecordForEntryAndDate(entryId, date)
     }
 
-    override suspend fun insertRecord(record: AttendanceRecordEntity): Long {
+    suspend fun insertRecord(record: AttendanceRecordEntity): Long {
         return attendanceDao.insertRecord(record)
     }
 
-    override suspend fun updateRecord(record: AttendanceRecordEntity) {
+    suspend fun updateRecord(record: AttendanceRecordEntity) {
         attendanceDao.updateRecord(record)
     }
 
-    override suspend fun clearAllRecords() {
+    suspend fun clearAllRecords() {
         attendanceDao.clearAllRecords()
     }
 }
