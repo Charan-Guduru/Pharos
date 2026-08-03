@@ -8,9 +8,6 @@ import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.MoreHoriz
-import androidx.compose.material.icons.outlined.LocationOn
-import androidx.compose.material.icons.outlined.Person
-import androidx.compose.material.icons.outlined.WarningAmber
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -25,12 +22,9 @@ import com.vnrvjiet.attendancemonitor.ui.theme.*
 @Composable
 fun AttendanceCard(
     subject: String,
-    faculty: String,
     time: String,
-    room: String,
     isAttendancePeriod: Boolean,
     isNow: Boolean = false,
-    statusText: String? = null,
     accentColor: Color = Color(0xFF6200EE),
     currentStatus: AttendanceStatus? = null,
     onStatusSelected: (AttendanceStatus) -> Unit = {},
@@ -39,7 +33,7 @@ fun AttendanceCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 6.dp),
+            .padding(vertical = 4.dp),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
@@ -52,7 +46,7 @@ fun AttendanceCard(
                     .background(accentColor)
             )
 
-            Column(modifier = Modifier.padding(16.dp)) {
+            Column(modifier = Modifier.padding(12.dp)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -74,59 +68,21 @@ fun AttendanceCard(
                         }
                     }
 
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        if (currentStatus != null) {
-                            StatusChip(status = currentStatus)
-                        }
-                        
-                        if (statusText != null) {
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Surface(
-                                color = Color(0xFFFFF3E0),
-                                shape = RoundedCornerShape(16.dp)
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        Icons.Outlined.WarningAmber,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(14.dp),
-                                        tint = Color(0xFFE65100)
-                                    )
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text(
-                                        text = statusText,
-                                        fontSize = 10.sp,
-                                        color = Color(0xFFE65100),
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                }
-                            }
-                        }
+                    if (currentStatus != null) {
+                        StatusChip(status = currentStatus)
                     }
                 }
 
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = subject,
                     style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
 
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Outlined.LocationOn, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(text = " Room $room", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    if (faculty.isNotEmpty() && faculty != "-") {
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Icon(Icons.Outlined.Person, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text(text = " $faculty", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                }
-
                 if (isAttendancePeriod) {
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)

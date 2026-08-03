@@ -18,6 +18,7 @@ import java.util.*
 data class DashboardUiState(
     val timetable: List<DashboardItem> = emptyList(),
     val weeklyTimetable: List<WeeklyDayGroup> = emptyList(),
+    val selectedDay: Int = Calendar.getInstance().get(Calendar.DAY_OF_WEEK).let { if (it == Calendar.SUNDAY) 7 else it - 1 },
     val overallPercentage: Float = 0f,
     val isSynced: Boolean = false,
     val isTimetableConfigured: Boolean = true,
@@ -60,18 +61,22 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
             if (it == Calendar.SUNDAY) 7 else it - 1
         }
 
+    private val _selectedDay = MutableStateFlow(currentDayOfWeek)
+
     val uiState: StateFlow<DashboardUiState> = combine(
         timetableRepo.getAllTimetableEntries(),
         subjectRepo.getAllSubjects(),
         attendanceRepo.getRecordsForDate(todayMidnight),
         eduPrimeDao.getAllAttendance(),
-        mappingDao.getAllMappings()
+        mappingDao.getAllMappings(),
+        _selectedDay
     ) { params: Array<Any?> ->
         val allEntries = params[0] as List<TimetableEntryEntity>
         val subjects = params[1] as List<SubjectEntity>
         val records = params[2] as List<AttendanceRecordEntity>
         val remoteData = params[3] as List<EduPrimeAttendanceEntity>
         val mappings = params[4] as List<SubjectMappingEntity>
+        val selectedDay = params[5] as Int
 
         val mappingMap = mappings.associate { it.subjectCode to it.subjectName }
         
@@ -91,7 +96,7 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
             }
         }
 
-        val todayItems = allDashboardItems.filter { it.entry.dayOfWeek == currentDayOfWeek }
+        val todayItems = allDashboardItems.filter { it.entry.dayOfWeek == selectedDay }
             .sortedBy { TimeUtils.parseTimeToMinutes(it.entry.startTime) }
 
         val dayNames = listOf("", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday")
@@ -120,6 +125,7 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
         DashboardUiState(
             timetable = todayItems,
             weeklyTimetable = weeklyGroups,
+            selectedDay = selectedDay,
             overallPercentage = percentage,
             isSynced = remoteData.isNotEmpty(),
             isTimetableConfigured = allEntries.isNotEmpty(),
@@ -132,6 +138,10 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = DashboardUiState()
     )
+
+    fun setDay(day: Int) {
+        _selectedDay.value = day
+    }
 
     fun recordAttendance(timetableEntryId: Long, status: AttendanceStatus) {
         viewModelScope.launch {

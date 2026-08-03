@@ -50,7 +50,7 @@ fun DashboardScreen(
     var showMoreSheet by remember { mutableStateOf(false) }
     var selectedEntryId by remember { mutableStateOf<Long?>(null) }
     
-    val dateFormatter = remember { SimpleDateFormat("EEE, MMM d", Locale.getDefault()) }
+    val dateFormatter = remember { SimpleDateFormat("dd MMM", Locale.getDefault()) }
     val currentDate = remember { dateFormatter.format(Date()) }
 
     if (showMoreSheet && selectedEntryId != null) {
@@ -70,7 +70,7 @@ fun DashboardScreen(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.surface)
             .padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
         contentPadding = PaddingValues(top = 8.dp, bottom = 100.dp)
     ) {
         item {
@@ -149,12 +149,10 @@ fun LazyListScope.dailyTabContent(
                 val days = listOf("M", "T", "W", "T", "F", "S")
                 days.forEachIndexed { index, day ->
                     val dayNum = index + 1
-                    val isSelected = Calendar.getInstance().get(Calendar.DAY_OF_WEEK).let { 
-                        val today = if (it == Calendar.SUNDAY) 7 else it - 1
-                        today == dayNum
-                    }
+                    val isSelected = uiState.selectedDay == dayNum
                     
                     Surface(
+                        onClick = { viewModel.setDay(dayNum) },
                         shape = RoundedCornerShape(8.dp),
                         color = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent,
                         modifier = Modifier.size(32.dp)
@@ -203,14 +201,6 @@ fun LazyListScope.dailyTabContent(
     }
 
     items(uiState.timetable) { item ->
-        val attendancePercentage = item.remoteAttendance?.attendancePercentage
-        val statusText = if (attendancePercentage != null) {
-            if (attendancePercentage < 75) "Low (${attendancePercentage.toInt()}%)" 
-            else "${attendancePercentage.toInt()}%"
-        } else {
-            null
-        }
-
         val currentMinutes = TimeUtils.getCurrentTimeInMinutes()
         val startMinutes = TimeUtils.parseTimeToMinutes(item.entry.startTime)
         val endMinutes = TimeUtils.parseTimeToMinutes(item.entry.endTime)
@@ -218,12 +208,9 @@ fun LazyListScope.dailyTabContent(
 
         AttendanceCard(
             subject = item.subject.subjectName,
-            faculty = item.subject.facultyName,
             time = item.entry.startTime,
-            room = item.subject.roomNumber,
             isAttendancePeriod = item.subject.isAttendanceSubject,
             isNow = isNow,
-            statusText = statusText,
             accentColor = Color(item.subject.color),
             currentStatus = item.attendanceRecord?.status,
             onStatusSelected = { status ->

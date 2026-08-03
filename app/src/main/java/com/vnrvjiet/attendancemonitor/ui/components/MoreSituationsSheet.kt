@@ -12,7 +12,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.vnrvjiet.attendancemonitor.data.model.AttendanceStatus
 
 data class SituationItem(
@@ -39,10 +38,23 @@ fun MoreSituationsSheet(
         SituationItem("Other", Icons.Default.MoreHoriz, Color.Gray, AttendanceStatus.OTHER)
     )
 
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.colorScheme.surface,
+        contentColor = MaterialTheme.colorScheme.onSurface
+    ) {
         Column(modifier = Modifier.padding(16.dp).padding(bottom = 32.dp)) {
-            Text("More Situations", fontSize = 20.sp, fontWeight = FontWeight.Bold)
-            Text("Record non-standard attendance for this period.", color = Color.Gray, fontSize = 14.sp)
+            Text(
+                text = "More Situations", 
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                text = "Record non-standard attendance for this period.", 
+                color = MaterialTheme.colorScheme.onSurfaceVariant, 
+                style = MaterialTheme.typography.bodyMedium
+            )
             
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -54,7 +66,7 @@ fun MoreSituationsSheet(
                     },
                     modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
                     shape = MaterialTheme.shapes.medium,
-                    color = Color(0xFFF8F9FA)
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
                 ) {
                     Row(
                         modifier = Modifier.padding(16.dp),
@@ -70,8 +82,17 @@ fun MoreSituationsSheet(
                             }
                         }
                         Spacer(modifier = Modifier.width(16.dp))
-                        Text(text = situation.label, modifier = Modifier.weight(1f), fontWeight = FontWeight.Medium)
-                        Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = Color.Gray)
+                        Text(
+                            text = situation.label, 
+                            modifier = Modifier.weight(1f), 
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Icon(
+                            Icons.Outlined.ChevronRight, 
+                            contentDescription = null, 
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 }
             }
@@ -80,7 +101,10 @@ fun MoreSituationsSheet(
             Button(
                 onClick = onDismiss,
                 modifier = Modifier.fillMaxWidth().height(56.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE3E3E3), contentColor = Color.Black)
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer, 
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                )
             ) {
                 Text("Cancel")
             }
