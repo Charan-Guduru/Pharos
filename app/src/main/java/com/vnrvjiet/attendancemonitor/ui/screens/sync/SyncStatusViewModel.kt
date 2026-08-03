@@ -14,6 +14,7 @@ import java.util.concurrent.TimeUnit
 data class SyncUiState(
     val lastSyncFormatted: String = "Never",
     val isSyncing: Boolean = false,
+    val isAutoSyncEnabled: Boolean = true,
     val error: String? = null,
     val success: Boolean = false,
     val navigateToSetup: Boolean = false
@@ -33,14 +34,17 @@ class SyncStatusViewModel(application: Application) : AndroidViewModel(applicati
 
     val lastManualSyncAt = settingsRepo.lastManualSyncAt
     val lastAutoSyncAt = settingsRepo.lastAutoSyncAt
+    val autoSyncEnabled = settingsRepo.autoSync
 
     val uiState: StateFlow<SyncUiState> = combine(
         lastManualSyncAt,
-        lastAutoSyncAt
-    ) { manual: Long, auto: Long ->
+        lastAutoSyncAt,
+        autoSyncEnabled
+    ) { manual: Long, auto: Long, enabled: Boolean ->
         val lastSync = if (manual > auto) manual else auto
         SyncUiState(
             lastSyncFormatted = formatLastSync(lastSync),
+            isAutoSyncEnabled = enabled,
             success = lastSync > 0L
         )
     }.stateIn(

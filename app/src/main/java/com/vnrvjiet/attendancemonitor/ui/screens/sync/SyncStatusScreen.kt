@@ -13,7 +13,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -100,7 +99,18 @@ fun SyncStatusScreen(
 
             SyncInfoCard(
                 lastManual = formatTimestamp(lastManual),
-                lastAuto = formatTimestamp(lastAuto)
+                lastAuto = formatTimestamp(lastAuto),
+                isAutoEnabled = uiState.isAutoSyncEnabled
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+            
+            Text(
+                text = "Attendance is synchronized automatically in the background while your device is connected to the internet.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                modifier = Modifier.padding(horizontal = 16.dp)
             )
 
             Spacer(modifier = Modifier.weight(1f))
@@ -120,18 +130,18 @@ fun SyncStatusScreen(
 }
 
 @Composable
-fun SyncInfoCard(lastManual: String, lastAuto: String) {
+fun SyncInfoCard(lastManual: String, lastAuto: String, isAutoEnabled: Boolean) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
+            SyncDetailItem("BACKGROUND SYNC", if (isAutoEnabled) "Enabled" else "Disabled")
+            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
             SyncDetailItem("LAST MANUAL SYNC", lastManual)
             HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
             SyncDetailItem("LAST AUTO SYNC", lastAuto)
-            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-            SyncDetailItem("NEXT SCHEDULED", "Calculated Windows")
         }
     }
 }

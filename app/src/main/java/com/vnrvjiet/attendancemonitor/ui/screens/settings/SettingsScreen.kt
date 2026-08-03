@@ -9,6 +9,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.NavigateNext
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Visibility
@@ -36,7 +37,9 @@ import java.util.*
 fun SettingsScreen(
     onBack: () -> Unit,
     onManageTimetableClick: () -> Unit,
-    onDebugAttendanceClick: () -> Unit,
+    onAboutClick: () -> Unit,
+    onPrivacyPolicyClick: () -> Unit,
+    onLicensesClick: () -> Unit,
     viewModel: SettingsViewModel = viewModel(),
     backupViewModel: BackupViewModel = viewModel()
 ) {
@@ -72,7 +75,6 @@ fun SettingsScreen(
 
     LaunchedEffect(backupState.message) {
         backupState.message?.let {
-            // Show toast or Snack bar (simplified to toast for this task)
             android.widget.Toast.makeText(context, it, android.widget.Toast.LENGTH_LONG).show()
             backupViewModel.clearMessage()
         }
@@ -177,13 +179,13 @@ fun SettingsScreen(
                             Spacer(modifier = Modifier.width(16.dp))
                             Column {
                                 Text(
-                                    "🟢 EduPrime Verified",
+                                    "EduPrime Verified",
                                     fontWeight = FontWeight.Bold,
                                     color = StatusVerified,
                                     fontSize = 16.sp
                                 )
                                 Text(
-                                    "Last Verified:",
+                                    "Last Successful Login:",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.padding(top = 4.dp)
@@ -216,9 +218,9 @@ fun SettingsScreen(
                     } else if (uiState.cooldownSeconds > 0) {
                         Text("Cooldown (${uiState.cooldownSeconds}s)")
                     } else if (uiState.lastVerified > 0L) {
-                        Text("Verify Again")
+                        Text("Verify Credentials")
                     } else {
-                        Text("Test EduPrime Login")
+                        Text("Login & Verify")
                     }
                 }
 
@@ -226,14 +228,14 @@ fun SettingsScreen(
                     if (!result.contains("✅")) {
                         Surface(
                             modifier = Modifier.padding(top = 12.dp).fillMaxWidth(),
-                            color = Color(0xFFFFEBEE),
+                            color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.1f),
                             shape = RoundedCornerShape(8.dp)
                         ) {
                             Text(
                                 text = result,
                                 modifier = Modifier.padding(12.dp),
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = Color(0xFFC62828),
+                                color = MaterialTheme.colorScheme.error,
                                 fontWeight = FontWeight.Medium
                             )
                         }
@@ -254,8 +256,8 @@ fun SettingsScreen(
                 }
 
                 SettingsSwitchItem(
-                    title = "Auto Sync",
-                    subtitle = "Automatically fetch attendance from EduPrime",
+                    title = "Background Sync",
+                    subtitle = "Automatically fetch attendance in the background",
                     checked = uiState.autoSync,
                     onCheckedChange = { viewModel.toggleAutoSync(it) }
                 )
@@ -265,7 +267,7 @@ fun SettingsScreen(
                     modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
                 ) {
                     Text(
-                        text =  "Keeps your attendance synchronized automatically in the background.",
+                        text =  "Synchronization occurs automatically while your device is connected to the internet.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(12.dp)
@@ -273,33 +275,43 @@ fun SettingsScreen(
                 }
             }
 
-            // NOTIFICATIONS SECTION
-            SettingsSection(title = "Notifications") {
-                SettingsSwitchItem(
-                    title = "Attendance Alerts",
-                    subtitle = "Notify when attendance is recorded",
-                    checked = uiState.attendanceAlerts,
-                    onCheckedChange = { viewModel.toggleAttendanceAlerts(it) }
-                )
-                SettingsSwitchItem(
-                    title = "Milestone Alerts",
-                    subtitle = "Notify when attendance goals are reached",
-                    checked = uiState.milestoneAlerts,
-                    onCheckedChange = { viewModel.toggleMilestoneAlerts(it) }
-                )
-                SettingsSwitchItem(
-                    title = "Mismatch Alerts",
-                    subtitle = "Notify if EduPrime data differs from local",
-                    checked = uiState.mismatchAlerts,
-                    onCheckedChange = { viewModel.toggleMismatchAlerts(it) }
-                )
+            // APPEARANCE SECTION
+            SettingsSection(title = "Appearance") {
+                var expanded by remember { mutableStateOf(false) }
+                ExposedDropdownMenuBox(
+                    expanded = expanded,
+                    onExpandedChange = { expanded = !expanded }
+                ) {
+                    OutlinedTextField(
+                        value = uiState.theme,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("App Theme") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                        modifier = Modifier.fillMaxWidth().menuAnchor()
+                    )
+                    ExposedDropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false }
+                    ) {
+                        listOf("System", "Light", "Dark").forEach { theme ->
+                            DropdownMenuItem(
+                                text = { Text(theme) },
+                                onClick = {
+                                    viewModel.setTheme(theme)
+                                    expanded = false
+                                }
+                            )
+                        }
+                    }
+                }
             }
 
             // BACKUP SECTION
-            SettingsSection(title = "Backup & Restore") {
+            SettingsSection(title = "Backup") {
                 Card(
                     modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -346,69 +358,18 @@ fun SettingsScreen(
                 }
             }
 
-            // APPEARANCE SECTION
-            SettingsSection(title = "Appearance") {
-                var expanded by remember { mutableStateOf(false) }
-                ExposedDropdownMenuBox(
-                    expanded = expanded,
-                    onExpandedChange = { expanded = !expanded }
-                ) {
-                    OutlinedTextField(
-                        value = uiState.theme,
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Theme") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                        modifier = Modifier.fillMaxWidth().menuAnchor()
-                    )
-                    ExposedDropdownMenu(
-                        expanded = expanded,
-                        onDismissRequest = { expanded = false }
-                    ) {
-                        listOf("System", "Light", "Dark").forEach { theme ->
-                            DropdownMenuItem(
-                                text = { Text(theme) },
-                                onClick = {
-                                    viewModel.setTheme(theme)
-                                    expanded = false
-                                }
-                            )
-                        }
-                    }
-                }
-            }
-
             // ABOUT SECTION
             SettingsSection(title = "About") {
-                AboutItem("App Version", "1.0.0")
-                AboutItem("Developer", "VNR VJIET Student")
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedButton(onClick = {}, modifier = Modifier.fillMaxWidth()) {
-                    Text("Privacy Policy")
-                }
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedButton(onClick = {}, modifier = Modifier.fillMaxWidth()) {
-                    Text("Open Source Licenses")
-                }
-            }
-
-            // DEBUG SECTION (TEMPORARY)
-            SettingsSection(title = "Developer Settings (Debug)") {
-                OutlinedButton(
-                    onClick = onDebugAttendanceClick,
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                ) {
-                    Icon(Icons.Default.BugReport, contentDescription = null)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Fetch EduPrime Attendance (Debug)")
-                }
+                SettingsClickItem(title = "App Information", onClick = onAboutClick)
+                SettingsClickItem(title = "Privacy Policy", onClick = onPrivacyPolicyClick)
+                SettingsClickItem(title = "Open Source Licenses", onClick = onLicensesClick)
             }
             
             Spacer(modifier = Modifier.height(48.dp))
         }
     }
 }
+
 @Composable
 fun SettingsSection(title: String, content: @Composable ColumnScope.() -> Unit) {
     Column {
@@ -452,20 +413,30 @@ fun SettingsSwitchItem(
 }
 
 @Composable
-fun AboutItem(label: String, value: String) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-        horizontalArrangement = Arrangement.SpaceBetween
+fun SettingsClickItem(
+    title: String,
+    onClick: () -> Unit
+) {
+    Surface(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        color = Color.Transparent
     ) {
-        Text(
-            text = label, 
-            style = MaterialTheme.typography.bodyMedium, 
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Text(
-            text = value, 
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurface
-        )
+        Row(
+            modifier = Modifier.padding(vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Icon(
+                Icons.AutoMirrored.Filled.NavigateNext,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 }
