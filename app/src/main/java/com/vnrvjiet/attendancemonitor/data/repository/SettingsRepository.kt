@@ -7,8 +7,19 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-class SettingsRepository(context: Context) {
+class SettingsRepository private constructor(context: Context) {
     private val prefs = SecurePreferences.getPrefs(context)
+    
+    companion object {
+        @Volatile
+        private var INSTANCE: SettingsRepository? = null
+
+        fun getInstance(context: Context): SettingsRepository {
+            return INSTANCE ?: synchronized(this) {
+                INSTANCE ?: SettingsRepository(context.applicationContext).also { INSTANCE = it }
+            }
+        }
+    }
 
     private val _autoSync = MutableStateFlow(prefs.getBoolean("auto_sync", true))
     val autoSync: StateFlow<Boolean> = _autoSync.asStateFlow()

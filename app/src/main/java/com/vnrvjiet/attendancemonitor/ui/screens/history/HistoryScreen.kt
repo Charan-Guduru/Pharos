@@ -106,7 +106,7 @@ fun HistoryItemCard(item: HistoryItem) {
         time = "${item.entry.startTime} - ${item.entry.endTime}",
         date = item.formattedDate,
         status = item.record.status,
-        syncStatus = item.record.syncStatus.name,
+        verificationState = item.record.verificationState,
         remarks = item.record.remarks,
         accentColor = Color(item.subject.color)
     )
@@ -119,7 +119,7 @@ fun AttendanceHistoryCard(
     time: String,
     date: String,
     status: AttendanceStatus,
-    syncStatus: String,
+    verificationState: com.vnrvjiet.attendancemonitor.data.model.VerificationState,
     remarks: String?,
     accentColor: Color
 ) {
@@ -172,10 +172,18 @@ fun AttendanceHistoryCard(
                     }
                 }
                 Spacer(modifier = Modifier.width(12.dp))
+                
+                val vColor = when(verificationState) {
+                    com.vnrvjiet.attendancemonitor.data.model.VerificationState.VERIFIED -> Color(0xFF4CAF50)
+                    com.vnrvjiet.attendancemonitor.data.model.VerificationState.MISMATCH -> Color(0xFFF44336)
+                    else -> MaterialTheme.colorScheme.onSurfaceVariant
+                }
+                
                 Text(
-                    syncStatus, 
+                    text = verificationState.name, 
                     style = MaterialTheme.typography.labelSmall, 
-                    color = if (syncStatus == "SYNCED") Color(0xFF4CAF50) else MaterialTheme.colorScheme.onSurfaceVariant
+                    color = vColor,
+                    fontWeight = if (verificationState != com.vnrvjiet.attendancemonitor.data.model.VerificationState.PENDING) FontWeight.Bold else FontWeight.Normal
                 )
             }
 

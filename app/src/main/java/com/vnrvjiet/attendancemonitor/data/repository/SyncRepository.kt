@@ -1,10 +1,8 @@
 package com.vnrvjiet.attendancemonitor.data.repository
 
 import com.vnrvjiet.attendancemonitor.data.local.dao.EduPrimeAttendanceDao
-import com.vnrvjiet.attendancemonitor.data.local.dao.NotificationDao
 import com.vnrvjiet.attendancemonitor.data.local.dao.SubjectMappingDao
 import com.vnrvjiet.attendancemonitor.data.local.entity.EduPrimeAttendanceEntity
-import com.vnrvjiet.attendancemonitor.data.local.entity.NotificationEntity
 import com.vnrvjiet.attendancemonitor.util.NotificationHelper
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -13,7 +11,7 @@ class SyncRepository(
     private val eduPrimeRepo: EduPrimeRepository,
     private val attendanceDao: EduPrimeAttendanceDao,
     private val mappingDao: SubjectMappingDao,
-    private val notificationDao: NotificationDao,
+    private val notificationRepo: NotificationRepository,
     private val settingsRepo: SettingsRepository,
     private val context: android.content.Context? = null
 ) {
@@ -56,12 +54,14 @@ class SyncRepository(
             Result.success(hasMissing)
         } else {
             val errorMsg = fetchResult.exceptionOrNull()?.message ?: "Sync failed"
-            notificationDao.insertNotification(NotificationEntity(
+            
+            // Use repository for deduplication
+            notificationRepo.addNotification(
                 title = "Synchronization Failed",
                 message = "Unable to synchronize with EduPrime: $errorMsg",
-                type = "SYNC_FAILED",
-                timestamp = System.currentTimeMillis()
-            ))
+                type = "SYNC_FAILED"
+            )
+            
             context?.let {
                 NotificationHelper.showNotification(it, "Synchronization Failed", "Unable to synchronize with EduPrime.", 999)
             }

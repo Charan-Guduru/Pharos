@@ -9,6 +9,9 @@ interface EduPrimeAttendanceDao {
     @Query("SELECT * FROM eduprime_attendance")
     fun getAllAttendance(): Flow<List<EduPrimeAttendanceEntity>>
 
+    @Query("SELECT * FROM eduprime_attendance")
+    suspend fun getAllAttendanceList(): List<EduPrimeAttendanceEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(records: List<EduPrimeAttendanceEntity>)
 

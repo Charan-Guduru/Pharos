@@ -9,6 +9,7 @@ import androidx.compose.runtime.getValue
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.vnrvjiet.attendancemonitor.ui.navigation.Screen
+import com.vnrvjiet.attendancemonitor.util.safeNavigate
 
 @Composable
 fun BottomNavigationBar(navController: NavController) {
@@ -27,7 +28,7 @@ fun BottomNavigationBar(navController: NavController) {
                 label = { Text(screen.title) },
                 selected = currentRoute == screen.route,
                 onClick = {
-                    navController.navigate(screen.route) {
+                    navController.safeNavigate(screen.route) {
                         popUpTo(navController.graph.startDestinationId) {
                             saveState = true
                         }

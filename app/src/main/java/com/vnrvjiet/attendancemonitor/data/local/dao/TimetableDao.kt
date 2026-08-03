@@ -12,6 +12,9 @@ interface TimetableDao {
     @Query("SELECT * FROM timetable")
     fun getAllTimetableEntries(): Flow<List<TimetableEntryEntity>>
 
+    @Query("SELECT * FROM timetable")
+    suspend fun getAllTimetableEntriesList(): List<TimetableEntryEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertTimetableEntries(entries: List<TimetableEntryEntity>)
 

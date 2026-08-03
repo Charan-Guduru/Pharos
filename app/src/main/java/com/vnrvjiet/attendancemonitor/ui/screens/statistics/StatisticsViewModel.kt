@@ -4,10 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.vnrvjiet.attendancemonitor.data.local.AppDatabase
-import com.vnrvjiet.attendancemonitor.data.repository.RoomSubjectRepository
-import com.vnrvjiet.attendancemonitor.data.repository.SyncRepository
-import com.vnrvjiet.attendancemonitor.data.repository.EduPrimeRepository
-import com.vnrvjiet.attendancemonitor.data.repository.SettingsRepository
+import com.vnrvjiet.attendancemonitor.data.repository.*
 import kotlinx.coroutines.flow.*
 import java.text.SimpleDateFormat
 import java.util.*
@@ -45,12 +42,12 @@ data class SubjectStatUiModel(
 class StatisticsViewModel(application: Application) : AndroidViewModel(application) {
     private val db = AppDatabase.getDatabase(application)
     private val subjectRepo = RoomSubjectRepository(db.subjectDao())
-    private val settingsRepo = SettingsRepository(application)
+    private val settingsRepo = SettingsRepository.getInstance(application)
     private val syncRepo = SyncRepository(
         EduPrimeRepository(),
         db.eduPrimeAttendanceDao(),
         db.subjectMappingDao(),
-        db.notificationDao(),
+        NotificationRepository(db.notificationDao()),
         settingsRepo,
         application
     )

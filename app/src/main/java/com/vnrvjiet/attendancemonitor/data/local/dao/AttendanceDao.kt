@@ -9,6 +9,9 @@ interface AttendanceDao {
     @Query("SELECT * FROM attendance_records ORDER BY date DESC, lastModified DESC")
     fun getAllRecords(): Flow<List<AttendanceRecordEntity>>
 
+    @Query("SELECT * FROM attendance_records")
+    suspend fun getAllRecordsList(): List<AttendanceRecordEntity>
+
     @Query("SELECT * FROM attendance_records WHERE date = :date")
     fun getRecordsForDate(date: Long): Flow<List<AttendanceRecordEntity>>
 

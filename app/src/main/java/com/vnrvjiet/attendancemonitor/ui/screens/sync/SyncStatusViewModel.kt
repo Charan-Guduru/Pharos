@@ -4,9 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.vnrvjiet.attendancemonitor.data.local.AppDatabase
-import com.vnrvjiet.attendancemonitor.data.repository.EduPrimeRepository
-import com.vnrvjiet.attendancemonitor.data.repository.SettingsRepository
-import com.vnrvjiet.attendancemonitor.data.repository.SyncRepository
+import com.vnrvjiet.attendancemonitor.data.repository.*
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.util.concurrent.TimeUnit
@@ -22,15 +20,16 @@ data class SyncUiState(
 
 class SyncStatusViewModel(application: Application) : AndroidViewModel(application) {
     private val db = AppDatabase.getDatabase(application)
-    private val settingsRepo = SettingsRepository(application)
+    private val settingsRepo = SettingsRepository.getInstance(application)
     private val syncRepo = SyncRepository(
         EduPrimeRepository(),
         db.eduPrimeAttendanceDao(),
         db.subjectMappingDao(),
-        db.notificationDao(),
+        NotificationRepository(db.notificationDao()),
         settingsRepo,
         application
     )
+    private val verificationEngine = VerificationEngine(db, application)
 
     val lastManualSyncAt = settingsRepo.lastManualSyncAt
     val lastAutoSyncAt = settingsRepo.lastAutoSyncAt
@@ -71,6 +70,9 @@ class SyncStatusViewModel(application: Application) : AndroidViewModel(applicati
             val result = syncRepo.performSync()
             result.onSuccess { hasMissing ->
                 settingsRepo.setLastManualSyncAt(System.currentTimeMillis())
+                // Run verification engine after manual sync
+                verificationEngine.run()
+                
                 if (hasMissing) {
                     _navigateToSetup.value = true
                 }

@@ -63,11 +63,8 @@ class HistoryViewModel(application: Application) : AndroidViewModel(application)
             
             val grouped = items.groupBy { item ->
                 getGroupHeader(item.record.date)
-            }.toSortedMap(compareByDescending { it }) // Sort groups: Today, Yesterday, Older
+            }
             
-            // To maintain order, we use a specific list of keys for iteration in UI
-            // But Map keys order depends on how we build it.
-            // Simplified grouping for now.
             HistoryUiState(groupedItems = grouped, isEmpty = items.isEmpty())
         }
     }.stateIn(

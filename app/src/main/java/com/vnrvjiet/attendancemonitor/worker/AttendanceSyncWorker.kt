@@ -23,7 +23,7 @@ class AttendanceSyncWorker(
     override suspend fun doWork(): Result {
         Log.d(WORK_TAG, "Worker started")
         val database = AppDatabase.getDatabase(applicationContext)
-        val settingsRepo = SettingsRepository(applicationContext)
+        val settingsRepo = SettingsRepository.getInstance(applicationContext)
         
         // 1. Check if Auto Sync is enabled
         if (!settingsRepo.autoSync.first()) {
@@ -44,7 +44,7 @@ class AttendanceSyncWorker(
             eduPrimeRepo,
             database.eduPrimeAttendanceDao(),
             database.subjectMappingDao(),
-            database.notificationDao(),
+            NotificationRepository(database.notificationDao()),
             settingsRepo,
             applicationContext
         )
@@ -57,7 +57,7 @@ class AttendanceSyncWorker(
                 settingsRepo.setLastAutoSyncAt(System.currentTimeMillis())
                 
                 // 3. Trigger Verification Engine
-                performVerificationUpdate(database, eduPrimeRepo, syncRepo)
+                VerificationEngine(database, applicationContext).run()
                 
                 Log.d(WORK_TAG, "Worker finished successfully")
                 Result.success()
@@ -88,68 +88,5 @@ class AttendanceSyncWorker(
         val result = windows.any { window -> currentMinutes in window..(window + 30) }
         Log.d(WORK_TAG, "Time check: currentMinutes=$currentMinutes, inWindow=$result")
         return result
-    }
-
-    private suspend fun performVerificationUpdate(
-        db: AppDatabase,
-        eduPrimeRepo: EduPrimeRepository,
-        syncRepo: SyncRepository
-    ) {
-        val attendanceRepo = RoomAttendanceRepository(db.attendanceDao())
-        val timetableRepo = RoomTimetableRepository(db.timetableDao())
-        val subjectRepo = RoomSubjectRepository(db.subjectDao())
-        val comparisonRepo = AttendanceComparisonRepository()
-        val mappingDao = db.subjectMappingDao()
-        val notificationRepo = NotificationRepository(db.notificationDao())
-
-        val localRecords = attendanceRepo.getAllRecords().first()
-        val timetable = timetableRepo.getAllTimetableEntries().first()
-        val subjects = subjectRepo.getAllSubjects().first()
-        val remoteData = syncRepo.syncedAttendance.first()
-        val mappings = mappingDao.getAllMappings().first()
-        
-        val mappingMap = mappings.associate { it.subjectCode to it.subjectName }
-
-        val remoteRecords = remoteData.map {
-            com.vnrvjiet.attendancemonitor.data.model.EduPrimeAttendanceRecord(
-                subjectCode = it.subjectCode,
-                subjectName = mappingMap[it.subjectCode] ?: it.subjectName ?: it.subjectCode,
-                conductedClasses = it.conductedClasses,
-                attendedClasses = it.attendedClasses,
-                attendancePercentage = it.attendancePercentage
-            )
-        }
-
-        val (_, updatedRecords) = comparisonRepo.compare(localRecords, timetable, subjects, remoteRecords)
-        
-        val timetableToSubjectCode = timetable.associate { it.id to (subjects.find { s -> s.id == it.subjectId }?.subjectCode ?: "UNKNOWN") }
-        
-        db.withTransaction {
-            updatedRecords.forEach { new ->
-                val old = localRecords.find { it.id == new.id }
-                if (old != null && old.verificationState != new.verificationState) {
-                    attendanceRepo.updateRecord(new)
-                    
-                    val subjectCode = timetableToSubjectCode[new.timetableEntryId] ?: "UNKNOWN"
-                    val subjectName = mappingMap[subjectCode] ?: subjectCode
-                    
-                    when {
-                        old.verificationState == VerificationState.PENDING && new.verificationState == VerificationState.VERIFIED -> {
-                            if (new.status == AttendanceStatus.BUNK) {
-                                notificationRepo.addNotification("Attendance Granted", "You received attendance for $subjectName.", "UNEXPECTED")
-                                NotificationHelper.showNotification(applicationContext, "Attendance Granted", "You received attendance for $subjectName.", new.id.toInt())
-                            } else {
-                                notificationRepo.addNotification("Attendance Verified", "Your attendance for $subjectName has been verified.", "VERIFIED")
-                                NotificationHelper.showNotification(applicationContext, "Attendance Verified", "Your attendance for $subjectName has been verified.", new.id.toInt())
-                            }
-                        }
-                        old.verificationState == VerificationState.PENDING && new.verificationState == VerificationState.MISMATCH -> {
-                            notificationRepo.addNotification("Attendance Mismatch", "Your attendance for $subjectName differs from EduPrime.", "MISMATCH")
-                            NotificationHelper.showNotification(applicationContext, "Attendance Mismatch", "Your attendance for $subjectName differs from EduPrime.", new.id.toInt())
-                        }
-                    }
-                }
-            }
-        }
     }
 }

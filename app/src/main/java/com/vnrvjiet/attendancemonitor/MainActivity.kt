@@ -18,7 +18,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
-        val settingsRepository = SettingsRepository(applicationContext)
+        val settingsRepository = SettingsRepository.getInstance(applicationContext)
         
         enableEdgeToEdge()
         setContent {

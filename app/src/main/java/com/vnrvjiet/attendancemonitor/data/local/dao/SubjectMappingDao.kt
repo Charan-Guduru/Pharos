@@ -9,6 +9,9 @@ interface SubjectMappingDao {
     @Query("SELECT * FROM subject_mappings")
     fun getAllMappings(): Flow<List<SubjectMappingEntity>>
 
+    @Query("SELECT * FROM subject_mappings")
+    suspend fun getAllMappingsList(): List<SubjectMappingEntity>
+
     @Query("SELECT * FROM subject_mappings WHERE subjectCode = :code LIMIT 1")
     suspend fun getBySubjectCode(code: String): SubjectMappingEntity?
 

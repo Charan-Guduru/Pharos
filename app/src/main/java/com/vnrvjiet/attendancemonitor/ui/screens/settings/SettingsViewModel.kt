@@ -30,7 +30,7 @@ data class SettingsUiState(
 )
 
 class SettingsViewModel(application: Application) : AndroidViewModel(application) {
-    private val repository = SettingsRepository(application)
+    private val repository = SettingsRepository.getInstance(application)
     private val eduPrimeRepo = EduPrimeRepository()
 
     private val _isTestingLogin = MutableStateFlow(false)

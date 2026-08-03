@@ -19,6 +19,8 @@ import com.vnrvjiet.attendancemonitor.ui.screens.settings.*
 import com.vnrvjiet.attendancemonitor.ui.screens.timetable.TimetableSetupScreen
 import com.vnrvjiet.attendancemonitor.ui.screens.statistics.StatisticsScreen
 import com.vnrvjiet.attendancemonitor.ui.screens.sync.SyncStatusScreen
+import com.vnrvjiet.attendancemonitor.util.safeNavigate
+import com.vnrvjiet.attendancemonitor.util.safePopBackStack
 
 @Composable
 fun AppNavigation() {
@@ -35,7 +37,7 @@ fun AppNavigation() {
             DashboardScaffold(
                 navController = navController,
                 currentScreen = Screen.Dashboard,
-                onNavigateToSetup = { navController.navigate(Screen.TimetableSetup.route) }
+                onNavigateToSetup = { navController.safeNavigate(Screen.TimetableSetup.route) }
             )
         }
         composable(Screen.History.route) {
@@ -46,45 +48,45 @@ fun AppNavigation() {
         }
         composable(Screen.Notifications.route) {
             NotificationsScreen(
-                onBack = { navController.popBackStack() },
-                onSettingsClick = { navController.navigate(Screen.Settings.route) }
+                onBack = { navController.safePopBackStack() },
+                onSettingsClick = { navController.safeNavigate(Screen.Settings.route) }
             )
         }
         composable(Screen.SyncStatus.route) {
             SyncStatusScreen(
-                onBack = { navController.popBackStack() },
-                onNavigateToSetup = { navController.navigate(Screen.SemesterSetup.route) }
+                onBack = { navController.safePopBackStack() },
+                onNavigateToSetup = { navController.safeNavigate(Screen.SemesterSetup.route) }
             )
         }
         composable(Screen.SemesterSetup.route) {
-            SemesterSetupScreen(onComplete = { navController.popBackStack() })
+            SemesterSetupScreen(onComplete = { navController.safePopBackStack() })
         }
         composable(Screen.TimetableSetup.route) {
             val canPop = navController.previousBackStackEntry != null
             TimetableSetupScreen(
                 onComplete = { 
-                    navController.popBackStack(Screen.Dashboard.route, false) 
+                    navController.safePopBackStack(Screen.Dashboard.route, false) 
                 },
-                onBack = if (canPop) { { navController.popBackStack() } } else null
+                onBack = if (canPop) { { navController.safePopBackStack() } } else null
             )
         }
         composable(Screen.Settings.route) {
             SettingsScreen(
-                onBack = { navController.popBackStack() },
-                onManageTimetableClick = { navController.navigate(Screen.TimetableSetup.route) },
-                onAboutClick = { navController.navigate(Screen.About.route) },
-                onPrivacyPolicyClick = { navController.navigate(Screen.PrivacyPolicy.route) },
-                onLicensesClick = { navController.navigate(Screen.Licenses.route) }
+                onBack = { navController.safePopBackStack() },
+                onManageTimetableClick = { navController.safeNavigate(Screen.TimetableSetup.route) },
+                onAboutClick = { navController.safeNavigate(Screen.About.route) },
+                onPrivacyPolicyClick = { navController.safeNavigate(Screen.PrivacyPolicy.route) },
+                onLicensesClick = { navController.safeNavigate(Screen.Licenses.route) }
             )
         }
         composable(Screen.About.route) {
-            AboutScreen(onBack = { navController.popBackStack() })
+            AboutScreen(onBack = { navController.safePopBackStack() })
         }
         composable(Screen.PrivacyPolicy.route) {
-            PrivacyPolicyScreen(onBack = { navController.popBackStack() })
+            PrivacyPolicyScreen(onBack = { navController.safePopBackStack() })
         }
         composable(Screen.Licenses.route) {
-            LicensesScreen(onBack = { navController.popBackStack() })
+            LicensesScreen(onBack = { navController.safePopBackStack() })
         }
     }
 }
@@ -98,8 +100,16 @@ fun DashboardScaffold(
     Scaffold(
         topBar = {
             DashboardTopBar(
-                onSyncClick = { navController.navigate(Screen.SyncStatus.route) },
-                onNotificationClick = { navController.navigate(Screen.Notifications.route) }
+                onSyncClick = { 
+                    navController.safeNavigate(Screen.SyncStatus.route) {
+                        launchSingleTop = true
+                    }
+                },
+                onNotificationClick = { 
+                    navController.safeNavigate(Screen.Notifications.route) {
+                        launchSingleTop = true
+                    }
+                }
             )
         },
         bottomBar = {

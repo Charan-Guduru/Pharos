@@ -32,8 +32,8 @@ class AttendanceComparisonRepository {
         val updatedLocalRecords = mutableListOf<AttendanceRecordEntity>()
         val budgets = eduPrimeData.associateBy { it.subjectCode }.toMutableMap()
         
-        // Sort local records chronologically per subject
-        val sortedLocal = localRecords.sortedBy { it.date }
+        // Sort local records chronologically per subject (Date + Timetable Slot)
+        val sortedLocal = localRecords.sortedWith(compareBy({ it.date }, { it.timetableEntryId }))
         val subjectConsumption = mutableMapOf<String, Int>() // Track index of record per subject
 
         sortedLocal.forEach { record ->

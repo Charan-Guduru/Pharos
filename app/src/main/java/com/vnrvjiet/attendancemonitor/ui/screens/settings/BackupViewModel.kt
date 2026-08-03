@@ -20,7 +20,7 @@ data class BackupUiState(
 )
 
 class BackupViewModel(application: Application) : AndroidViewModel(application) {
-    private val settingsRepo = SettingsRepository(application)
+    private val settingsRepo = SettingsRepository.getInstance(application)
     private val backupRepo = BackupRepository(
         AppDatabase.getDatabase(application),
         settingsRepo

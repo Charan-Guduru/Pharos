@@ -9,7 +9,7 @@ class NotificationRepository(private val dao: NotificationDao) {
     val unreadCount: Flow<Int> = dao.getUnreadCount()
 
     suspend fun addNotification(title: String, message: String, type: String) {
-        val existing = dao.getLatestUnreadByTypeAndMessage(type, message)
+        val existing = dao.getLatestUnreadByTitleAndMessage(title, message)
         if (existing != null) {
             // Update timestamp of existing unread notification instead of duplicating
             dao.updateNotification(existing.copy(timestamp = System.currentTimeMillis()))

@@ -26,7 +26,7 @@ fun AboutScreen(
     onBack: () -> Unit
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
-    val settingsRepo = remember { SettingsRepository(context) }
+    val settingsRepo = remember { SettingsRepository.getInstance(context) }
     val lastSync by settingsRepo.lastAutoSyncAt.collectAsStateWithLifecycle()
     val lastManual by settingsRepo.lastManualSyncAt.collectAsStateWithLifecycle()
     

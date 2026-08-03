@@ -12,8 +12,8 @@ interface NotificationDao {
     @Query("SELECT COUNT(*) FROM notifications WHERE isRead = 0")
     fun getUnreadCount(): Flow<Int>
 
-    @Query("SELECT * FROM notifications WHERE type = :type AND message = :message AND isRead = 0 ORDER BY timestamp DESC LIMIT 1")
-    suspend fun getLatestUnreadByTypeAndMessage(type: String, message: String): NotificationEntity?
+    @Query("SELECT * FROM notifications WHERE title = :title AND message = :message AND isRead = 0 ORDER BY timestamp DESC LIMIT 1")
+    suspend fun getLatestUnreadByTitleAndMessage(title: String, message: String): NotificationEntity?
 
     @Update
     suspend fun updateNotification(notification: NotificationEntity)
