@@ -30,11 +30,10 @@ data class StatisticsUiState(
 
 data class SubjectStatUiModel(
     val subjectName: String,
+    val subjectCode: String,
     val percentage: Int,
     val attended: Int,
     val conducted: Int,
-    val classesChange: Int,
-    val isLead: Boolean,
     val color: Int,
     val status: String
 )
@@ -82,20 +81,12 @@ class StatisticsViewModel(application: Application) : AndroidViewModel(applicati
             val localSubject = subjects.find { it.subjectCode == remote.subjectCode }
             val mappedName = mappingMap[remote.subjectCode] ?: remote.subjectName ?: remote.subjectCode
             
-            val isLead = (remote.attendedClasses.toFloat() / (if (remote.conductedClasses == 0) 1 else remote.conductedClasses)) >= threshold
-            val classesChange = if (isLead) {
-                calculateSafeLeave(remote.attendedClasses, remote.conductedClasses, threshold)
-            } else {
-                calculateClassesNeeded(remote.attendedClasses, remote.conductedClasses, threshold)
-            }
-
             SubjectStatUiModel(
                 subjectName = mappedName,
+                subjectCode = remote.subjectCode,
                 percentage = remote.attendancePercentage.toInt(),
                 attended = remote.attendedClasses,
                 conducted = remote.conductedClasses,
-                classesChange = classesChange,
-                isLead = isLead,
                 color = localSubject?.color ?: 0xFF9E9E9E.toInt(),
                 status = getStatusLabel(remote.attendancePercentage.toFloat())
             )
