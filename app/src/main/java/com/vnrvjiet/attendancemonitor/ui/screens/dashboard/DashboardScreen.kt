@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.rounded.CalendarMonth
 import com.vnrvjiet.attendancemonitor.ui.components.AttendanceCard
 import com.vnrvjiet.attendancemonitor.ui.components.MoreSituationsSheet
 import com.vnrvjiet.attendancemonitor.ui.components.SummaryCard
@@ -29,16 +30,11 @@ import java.util.*
 @Composable
 fun DashboardScreen(
     onNavigateToSetup: () -> Unit,
+    onNavigateToRestore: () -> Unit,
     viewModel: DashboardViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     
-    LaunchedEffect(uiState.isLoading, uiState.isTimetableConfigured) {
-        if (!uiState.isLoading && !uiState.isTimetableConfigured) {
-            onNavigateToSetup()
-        }
-    }
-
     if (uiState.isLoading) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             CircularProgressIndicator()
@@ -70,7 +66,7 @@ fun DashboardScreen(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.surface)
             .padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
         contentPadding = PaddingValues(top = 8.dp, bottom = 100.dp)
     ) {
         item {
@@ -94,10 +90,17 @@ fun DashboardScreen(
         }
 
         if (selectedTab == 0) {
-            dailyTabContent(uiState, currentDate, onMoreClick = { id ->
-                selectedEntryId = id
-                showMoreSheet = true
-            }, viewModel)
+            dailyTabContent(
+                uiState = uiState, 
+                currentDate = currentDate, 
+                onMoreClick = { id ->
+                    selectedEntryId = id
+                    showMoreSheet = true
+                }, 
+                onSetupTimetable = onNavigateToSetup,
+                onRestoreBackup = onNavigateToRestore,
+                viewModel = viewModel
+            )
         } else {
             weeklyTabContent(uiState)
         }
@@ -108,6 +111,8 @@ fun LazyListScope.dailyTabContent(
     uiState: DashboardUiState,
     currentDate: String,
     onMoreClick: (Long) -> Unit,
+    onSetupTimetable: () -> Unit,
+    onRestoreBackup: () -> Unit,
     viewModel: DashboardViewModel
 ) {
     val actualToday = Calendar.getInstance().get(Calendar.DAY_OF_WEEK).let { if (it == Calendar.SUNDAY) 7 else it - 1 }
@@ -122,7 +127,7 @@ fun LazyListScope.dailyTabContent(
         val runningClass = attendanceRequiredClasses.find { 
             val start = TimeUtils.parseTimeToMinutes(it.entry.startTime)
             val end = TimeUtils.parseTimeToMinutes(it.entry.endTime)
-            currentMinutes >= start && currentMinutes < end
+            currentMinutes in start until end
         }
 
         if (runningClass != null) {
@@ -138,7 +143,12 @@ fun LazyListScope.dailyTabContent(
     } else null
 
     item {
-        if (uiState.isSynced) {
+        if (!uiState.isTimetableConfigured) {
+            WelcomeCard(
+                onSetupClick = onSetupTimetable,
+                onRestoreClick = onRestoreBackup
+            )
+        } else if (uiState.isSynced) {
             SummaryCard(
                 percentage = uiState.overallPercentage,
                 classesChange = uiState.classesChange,
@@ -198,7 +208,7 @@ fun LazyListScope.dailyTabContent(
         }
     }
 
-    if (uiState.timetable.isEmpty()) {
+    if (uiState.isTimetableConfigured && uiState.timetable.isEmpty()) {
         item {
             Card(
                 modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp),
@@ -232,7 +242,7 @@ fun LazyListScope.dailyTabContent(
         if (isTodaySelected) {
             val startMinutes = TimeUtils.parseTimeToMinutes(item.entry.startTime)
             val endMinutes = TimeUtils.parseTimeToMinutes(item.entry.endTime)
-            isNow = currentMinutes >= startMinutes && currentMinutes < endMinutes
+            isNow = currentMinutes in startMinutes until endMinutes
         }
 
         AttendanceCard(
@@ -250,6 +260,68 @@ fun LazyListScope.dailyTabContent(
                 onMoreClick(item.entry.id)
             }
         )
+    }
+}
+
+@Composable
+fun WelcomeCard(
+    onSetupClick: () -> Unit,
+    onRestoreClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainer,
+            contentColor = MaterialTheme.colorScheme.onSurface
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(modifier = Modifier.padding(24.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Rounded.CalendarMonth,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(
+                    text = "Let's Get Started",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "Create a timetable to begin tracking your attendance, or restore an existing backup.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(24.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Button(
+                    onClick = onSetupClick,
+                    modifier = Modifier.weight(1f),
+                    shape = MaterialTheme.shapes.medium
+                ) {
+                    Text("Setup Timetable")
+                }
+                OutlinedButton(
+                    onClick = onRestoreClick,
+                    modifier = Modifier.weight(1f),
+                    shape = MaterialTheme.shapes.medium,
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary)
+                ) {
+                    Text("Restore Backup")
+                }
+            }
+        }
     }
 }
 

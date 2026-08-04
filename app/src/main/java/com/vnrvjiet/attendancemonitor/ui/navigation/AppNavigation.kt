@@ -36,7 +36,8 @@ fun AppNavigation() {
             DashboardScaffold(
                 navController = navController,
                 currentScreen = Screen.Dashboard,
-                onNavigateToSetup = { navController.safeNavigate(Screen.TimetableSetup.route) }
+                onNavigateToSetup = { navController.safeNavigate(Screen.TimetableSetup.route) },
+                onNavigateToRestore = { navController.safeNavigate(Screen.Settings.route) }
             )
         }
         composable(Screen.History.route) {
@@ -94,7 +95,8 @@ fun AppNavigation() {
 fun DashboardScaffold(
     navController: androidx.navigation.NavHostController,
     currentScreen: Screen,
-    onNavigateToSetup: () -> Unit = {}
+    onNavigateToSetup: () -> Unit = {},
+    onNavigateToRestore: () -> Unit = {}
 ) {
     Scaffold(
         topBar = {
@@ -117,10 +119,13 @@ fun DashboardScaffold(
     ) { innerPadding ->
         Box(modifier = Modifier.padding(innerPadding)) {
             when (currentScreen) {
-                Screen.Dashboard -> DashboardScreen(onNavigateToSetup = onNavigateToSetup)
+                Screen.Dashboard -> DashboardScreen(
+                    onNavigateToSetup = onNavigateToSetup,
+                    onNavigateToRestore = onNavigateToRestore
+                )
                 Screen.History -> HistoryScreen()
                 Screen.Statistics -> StatisticsScreen()
-                else -> DashboardScreen(onNavigateToSetup = {})
+                else -> DashboardScreen(onNavigateToSetup = {}, onNavigateToRestore = {})
             }
         }
     }

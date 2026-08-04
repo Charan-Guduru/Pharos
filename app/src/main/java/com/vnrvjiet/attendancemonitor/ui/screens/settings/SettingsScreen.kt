@@ -2,6 +2,9 @@ package com.vnrvjiet.attendancemonitor.ui.screens.settings
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_STRONG
+import androidx.biometric.BiometricManager.Authenticators.DEVICE_CREDENTIAL
+import androidx.biometric.BiometricPrompt
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -52,6 +55,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -67,9 +71,15 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
+import androidx.fragment.app.FragmentActivity
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.vnrvjiet.attendancemonitor.ui.theme.StatusVerified
+import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -89,11 +99,68 @@ fun SettingsScreen(
     val backupState by backupViewModel.fullUiState.collectAsStateWithLifecycle()
     
     val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
     
     var username by remember(uiState.username) { mutableStateOf(uiState.username) }
     var dob by remember(uiState.dob) { mutableStateOf(uiState.dob) }
     var password by remember { mutableStateOf(viewModel.getPassword()) }
-    var passwordVisible by remember { mutableStateOf(false) }
+    var isDobVisible by remember { mutableStateOf(false) }
+    var isPasswordVisible by remember { mutableStateOf(false) }
+
+    // Independent auto-hide timers
+    LaunchedEffect(isDobVisible) {
+        if (isDobVisible) {
+            delay(15000)
+            isDobVisible = false
+        }
+    }
+
+    LaunchedEffect(isPasswordVisible) {
+        if (isPasswordVisible) {
+            delay(15000)
+            isPasswordVisible = false
+        }
+    }
+
+    // Hide both when app goes background or screen is left
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_PAUSE || event == Lifecycle.Event.ON_STOP) {
+                isDobVisible = false
+                isPasswordVisible = false
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            isDobVisible = false
+            isPasswordVisible = false
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
+    fun handleReveal(target: String) {
+        val activity = context as? FragmentActivity ?: return
+        val executor = ContextCompat.getMainExecutor(activity)
+        val biometricPrompt = BiometricPrompt(activity, executor,
+            object : BiometricPrompt.AuthenticationCallback() {
+                override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                    super.onAuthenticationSucceeded(result)
+                    if (target == "dob") {
+                        isDobVisible = true
+                    } else if (target == "password") {
+                        isPasswordVisible = true
+                    }
+                }
+            })
+
+        val promptInfo = BiometricPrompt.PromptInfo.Builder()
+            .setTitle("Confirm Identity")
+            .setSubtitle("Confirm your identity to view sensitive information")
+            .setAllowedAuthenticators(BIOMETRIC_STRONG or DEVICE_CREDENTIAL)
+            .build()
+
+        biometricPrompt.authenticate(promptInfo)
+    }
 
     val exportLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("application/json"),
@@ -158,14 +225,27 @@ fun SettingsScreen(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 OutlinedTextField(
-                    value = dob,
+                    value = if (isDobVisible) dob else "••.••.••••",
                     onValueChange = { 
-                        dob = it
-                        viewModel.updateCredentials(username, password, it)
+                        if (isDobVisible) {
+                            dob = it
+                            viewModel.updateCredentials(username, password, it)
+                        }
                     },
                     label = { Text("Date of Birth (DD-MM-YYYY)") },
                     modifier = Modifier.fillMaxWidth(),
                     leadingIcon = { Icon(Icons.Default.CalendarToday, null) },
+                    trailingIcon = {
+                        IconButton(onClick = { 
+                            if (isDobVisible) isDobVisible = false else handleReveal("dob") 
+                        }) {
+                            Icon(
+                                if (isDobVisible) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
+                                contentDescription = null
+                            )
+                        }
+                    },
+                    readOnly = !isDobVisible,
                     singleLine = true
                 )
                 
@@ -180,12 +260,14 @@ fun SettingsScreen(
                     label = { Text("EduPrime Password") },
                     modifier = Modifier.fillMaxWidth(),
                     leadingIcon = { Icon(Icons.Outlined.Lock, null) },
-                    visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                    visualTransformation = if (isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                     trailingIcon = {
-                        IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                        IconButton(onClick = { 
+                            if (isPasswordVisible) isPasswordVisible = false else handleReveal("password") 
+                        }) {
                             Icon(
-                                if (passwordVisible) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
+                                if (isPasswordVisible) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
                                 contentDescription = null
                             )
                         }

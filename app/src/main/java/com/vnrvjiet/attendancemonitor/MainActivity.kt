@@ -12,11 +12,12 @@ import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.fragment.app.FragmentActivity
 import com.vnrvjiet.attendancemonitor.data.repository.SettingsRepository
 import com.vnrvjiet.attendancemonitor.ui.navigation.AppNavigation
 import com.vnrvjiet.attendancemonitor.ui.theme.PharosTheme
 
-class MainActivity : ComponentActivity() {
+class MainActivity : FragmentActivity() {
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { _ -> }

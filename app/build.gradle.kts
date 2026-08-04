@@ -78,6 +78,9 @@ dependencies {
     // Splash Screen
     implementation("androidx.core:core-splashscreen:1.0.1")
     
+    // Biometric
+    implementation("androidx.biometric:biometric:1.2.0-alpha05")
+    
     // Security
     implementation(libs.androidx.security.crypto)
 
