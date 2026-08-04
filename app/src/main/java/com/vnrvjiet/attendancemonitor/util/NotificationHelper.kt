@@ -12,8 +12,8 @@ import com.vnrvjiet.attendancemonitor.MainActivity
 import com.vnrvjiet.attendancemonitor.R
 
 object NotificationHelper {
-    private const val CHANNEL_ID = "attendance_notifications"
-    private const val CHANNEL_NAME = "Attendance Alerts"
+    private const val CHANNEL_ID = "pharos_notifications"
+    private const val CHANNEL_NAME = "Pharos Alerts"
     private const val CHANNEL_DESC = "Notifications for attendance verification and sync status"
 
     fun showNotification(context: Context, title: String, message: String, notificationId: Int) {

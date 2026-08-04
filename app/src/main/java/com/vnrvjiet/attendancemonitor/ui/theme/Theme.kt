@@ -39,7 +39,7 @@ private val LightColorScheme = lightColorScheme(
 )
 
 @Composable
-fun AttendanceMonitorTheme(
+fun PharosTheme(
     themePreference: String = "System",
     content: @Composable () -> Unit
 ) {

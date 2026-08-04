@@ -38,7 +38,7 @@ fun PrivacyPolicyScreen(
         ) {
             PrivacySection(
                 title = "Data Collection",
-                content = "Attendance Monitor does not collect any personal data. All information you provide, including your EduPrime credentials, is stored exclusively on your device."
+                content = "Pharos does not collect any personal data. All information you provide, including your EduPrime credentials, is stored exclusively on your device."
             )
 
             PrivacySection(

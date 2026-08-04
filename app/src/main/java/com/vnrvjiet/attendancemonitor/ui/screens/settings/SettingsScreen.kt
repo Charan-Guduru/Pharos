@@ -369,7 +369,10 @@ fun SettingsScreen(
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Button(
-                        onClick = { exportLauncher.launch("AttendanceMonitor_Backup.json") },
+                        onClick = { 
+                            val dateStr = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+                            exportLauncher.launch("pharos_backup_$dateStr.json") 
+                        },
                         modifier = Modifier.weight(1f),
                         enabled = !backupState.isProcessing,
                         shape = MaterialTheme.shapes.medium

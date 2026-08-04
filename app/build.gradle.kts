@@ -51,6 +51,7 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.material.icons.extended)
+    implementation("com.google.android.material:material:1.12.0")
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     
@@ -73,6 +74,9 @@ dependencies {
     
     // WorkManager
     implementation(libs.androidx.work.runtime.ktx)
+    
+    // Splash Screen
+    implementation("androidx.core:core-splashscreen:1.0.1")
     
     // Security
     implementation(libs.androidx.security.crypto)

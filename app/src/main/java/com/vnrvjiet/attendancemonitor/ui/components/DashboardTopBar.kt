@@ -17,7 +17,7 @@ import java.util.*
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardTopBar(
-    userName: String = "Attendance",
+    userName: String = "Pharos",
     onSyncClick: () -> Unit = {},
     onNotificationClick: () -> Unit = {},
     notificationViewModel: NotificationViewModel = viewModel()

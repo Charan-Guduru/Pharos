@@ -10,6 +10,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -80,15 +81,23 @@ fun AboutScreen(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+            
+            Text(
+                text = "A smart companion to monitor your academic attendance with seamless EduPrime synchronization and goal-based analysis.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(top = 8.dp).padding(horizontal = 16.dp)
+            )
 
             Spacer(modifier = Modifier.height(40.dp))
 
             AboutInfoCard {
-                AboutInfoItem("Developer by", "Raizen")
+                AboutInfoItem("Developed by", "Raizen")
                 HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-                AboutInfoItem("Build Type", "Version 1.0")
+                AboutInfoItem("Build Type", BuildConfig.BUILD_TYPE.uppercase())
                 HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-                AboutInfoItem("Database Version", "5")
+                AboutInfoItem("Database Version", "6")
                 HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                 AboutInfoItem("Last Sync", lastSyncStr)
             }
@@ -96,7 +105,7 @@ fun AboutScreen(
             Spacer(modifier = Modifier.weight(1f))
             
             Text(
-                text = "© 2026 Attendance Monitor Team",
+                text = "© 2026 Pharos Team",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.outline
             )

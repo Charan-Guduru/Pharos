@@ -8,6 +8,9 @@ import com.vnrvjiet.attendancemonitor.data.local.entity.SubjectEntity
 import com.vnrvjiet.attendancemonitor.data.local.entity.TimetableEntryEntity
 import com.vnrvjiet.attendancemonitor.data.model.*
 import kotlinx.coroutines.flow.first
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class BackupRepository(
     private val database: AppDatabase,
