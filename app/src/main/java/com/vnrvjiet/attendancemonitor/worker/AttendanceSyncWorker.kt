@@ -31,20 +31,13 @@ class AttendanceSyncWorker(
             return Result.success()
         }
 
-        // 2. Check Time Windows (09:00, 10:00, 12:30, 02:00, 05:00)
-        if (!isInSyncWindow()) {
-            Log.d(WORK_TAG, "Outside sync window, finishing")
-            return Result.success()
-        }
-
-        Log.d(WORK_TAG, "Within sync window, proceeding")
-
         val eduPrimeRepo = EduPrimeRepository()
         val syncRepo = SyncRepository(
             eduPrimeRepo,
             database.eduPrimeAttendanceDao(),
             database.subjectMappingDao(),
             NotificationRepository(database.notificationDao()),
+            database.attendanceSnapshotDao(),
             settingsRepo,
             applicationContext
         )
@@ -69,24 +62,5 @@ class AttendanceSyncWorker(
             Log.e(WORK_TAG, "Worker failed with exception", e)
             Result.retry()
         }
-    }
-
-    private fun isInSyncWindow(): Boolean {
-        val now = Calendar.getInstance()
-        val hour = now.get(Calendar.HOUR_OF_DAY)
-        val minute = now.get(Calendar.MINUTE)
-        val currentMinutes = hour * 60 + minute
-
-        val windows = listOf(
-            9 * 60,         // 09:00
-            10 * 60,        // 10:00
-            12 * 60 + 30,   // 12:30
-            14 * 60,        // 02:00 PM
-            17 * 60         // 05:00 PM
-        )
-
-        val result = windows.any { window -> currentMinutes in window..(window + 30) }
-        Log.d(WORK_TAG, "Time check: currentMinutes=$currentMinutes, inWindow=$result")
-        return result
     }
 }

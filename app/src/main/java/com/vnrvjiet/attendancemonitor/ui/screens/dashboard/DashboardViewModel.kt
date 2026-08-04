@@ -64,13 +64,15 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
     private val _selectedDay = MutableStateFlow(currentDayOfWeek)
 
     val uiState: StateFlow<DashboardUiState> = combine(
-        timetableRepo.getAllTimetableEntries(),
-        subjectRepo.getAllSubjects(),
-        attendanceRepo.getRecordsForDate(todayMidnight),
-        eduPrimeDao.getAllAttendance(),
-        mappingDao.getAllMappings(),
-        _selectedDay
-    ) { params: Array<Any?> ->
+        listOf(
+            timetableRepo.getAllTimetableEntries(),
+            subjectRepo.getAllSubjects(),
+            attendanceRepo.getRecordsForDate(todayMidnight),
+            eduPrimeDao.getAllAttendance(),
+            mappingDao.getAllMappings(),
+            _selectedDay
+        )
+    ) { params ->
         val allEntries = params[0] as List<TimetableEntryEntity>
         val subjects = params[1] as List<SubjectEntity>
         val records = params[2] as List<AttendanceRecordEntity>

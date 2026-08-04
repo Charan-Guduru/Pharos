@@ -47,6 +47,7 @@ class StatisticsViewModel(application: Application) : AndroidViewModel(applicati
         db.eduPrimeAttendanceDao(),
         db.subjectMappingDao(),
         NotificationRepository(db.notificationDao()),
+        db.attendanceSnapshotDao(),
         settingsRepo,
         application
     )

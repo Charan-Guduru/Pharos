@@ -32,7 +32,7 @@ fun NotificationsScreen(
     viewModel: NotificationViewModel = viewModel()
 ) {
     val notifications by viewModel.notifications.collectAsStateWithLifecycle()
-    val timeFormatter = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
+    val timeFormatter = remember { SimpleDateFormat("hh:mm a", Locale.getDefault()) }
     val dateFormatter = remember { SimpleDateFormat("dd MMM", Locale.getDefault()) }
 
     Scaffold(

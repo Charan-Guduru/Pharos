@@ -39,16 +39,18 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     private var cooldownJob: Job? = null
 
     val uiState: StateFlow<SettingsUiState> = combine(
-        repository.autoSync,
-        repository.attendanceAlerts,
-        repository.milestoneAlerts,
-        repository.mismatchAlerts,
-        repository.theme,
-        repository.lastVerified,
-        _isTestingLogin,
-        _loginTestResult,
-        _cooldownSeconds
-    ) { params: Array<Any?> ->
+        listOf(
+            repository.autoSync,
+            repository.attendanceAlerts,
+            repository.milestoneAlerts,
+            repository.mismatchAlerts,
+            repository.theme,
+            repository.lastVerified,
+            _isTestingLogin,
+            _loginTestResult,
+            _cooldownSeconds
+        )
+    ) { params ->
         SettingsUiState(
             username = repository.getUsername(),
             dob = repository.getDob(),

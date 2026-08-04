@@ -23,6 +23,7 @@ class VerificationEngine(private val db: AppDatabase, private val context: Conte
         val remoteData = db.eduPrimeAttendanceDao().getAllAttendanceList()
         val mappings = db.subjectMappingDao().getAllMappingsList()
         
+        val lastSyncedAt = remoteData.firstOrNull()?.lastSyncedAt ?: 0L
         val mappingMap = mappings.associate { it.subjectCode to it.subjectName }
 
         val remoteRecords = remoteData.map {
@@ -35,7 +36,13 @@ class VerificationEngine(private val db: AppDatabase, private val context: Conte
             )
         }
 
-        val (_, updatedRecords) = comparisonRepo.compare(localRecords, timetable, subjects, remoteRecords)
+        val (_, updatedRecords) = comparisonRepo.compare(
+            localRecords, 
+            timetable, 
+            subjects, 
+            remoteRecords,
+            lastSyncedAt
+        )
         
         val timetableToSubjectCode = timetable.associate { it.id to (subjects.find { s -> s.id == it.subjectId }?.subjectCode ?: "UNKNOWN") }
         

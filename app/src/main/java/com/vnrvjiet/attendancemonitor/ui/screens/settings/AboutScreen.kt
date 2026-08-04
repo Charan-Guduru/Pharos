@@ -31,7 +31,7 @@ fun AboutScreen(
     val lastManual by settingsRepo.lastManualSyncAt.collectAsStateWithLifecycle()
     
     val actualLastSync = if (lastSync > lastManual) lastSync else lastManual
-    val sdf = remember { SimpleDateFormat("dd MMM yyyy, HH:mm", Locale.getDefault()) }
+    val sdf = remember { SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault()) }
     val lastSyncStr = if (actualLastSync == 0L) "Never" else sdf.format(Date(actualLastSync))
 
     Scaffold(
@@ -61,7 +61,7 @@ fun AboutScreen(
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Text(
-                        text = "AM",
+                        text = "P",
                         style = MaterialTheme.typography.headlineLarge,
                         color = MaterialTheme.colorScheme.onPrimaryContainer,
                         fontWeight = FontWeight.Bold
@@ -71,7 +71,7 @@ fun AboutScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text = "Attendance Monitor",
+                text = "Pharos",
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold
             )

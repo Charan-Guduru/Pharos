@@ -120,16 +120,19 @@ fun LazyListScope.dailyTabContent(
             .sortedBy { TimeUtils.parseTimeToMinutes(it.entry.startTime) }
         
         val runningClass = attendanceRequiredClasses.find { 
-            currentMinutes in TimeUtils.parseTimeToMinutes(it.entry.startTime)..TimeUtils.parseTimeToMinutes(it.entry.endTime)
+            val start = TimeUtils.parseTimeToMinutes(it.entry.startTime)
+            val end = TimeUtils.parseTimeToMinutes(it.entry.endTime)
+            currentMinutes >= start && currentMinutes < end
         }
 
         if (runningClass != null) {
+            val runningStart = TimeUtils.parseTimeToMinutes(runningClass.entry.startTime)
             attendanceRequiredClasses.find { 
-                TimeUtils.parseTimeToMinutes(it.entry.startTime) > TimeUtils.parseTimeToMinutes(runningClass.entry.startTime) 
+                TimeUtils.parseTimeToMinutes(it.entry.startTime) > runningStart 
             }?.entry?.id
         } else {
             attendanceRequiredClasses.find { 
-                TimeUtils.parseTimeToMinutes(it.entry.startTime) > currentMinutes 
+                TimeUtils.parseTimeToMinutes(it.entry.startTime) >= currentMinutes 
             }?.entry?.id
         }
     } else null
@@ -229,7 +232,7 @@ fun LazyListScope.dailyTabContent(
         if (isTodaySelected) {
             val startMinutes = TimeUtils.parseTimeToMinutes(item.entry.startTime)
             val endMinutes = TimeUtils.parseTimeToMinutes(item.entry.endTime)
-            isNow = currentMinutes in startMinutes..endMinutes
+            isNow = currentMinutes >= startMinutes && currentMinutes < endMinutes
         }
 
         AttendanceCard(

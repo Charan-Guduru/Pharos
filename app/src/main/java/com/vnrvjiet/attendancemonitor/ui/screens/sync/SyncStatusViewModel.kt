@@ -4,6 +4,9 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.vnrvjiet.attendancemonitor.data.local.AppDatabase
+import com.vnrvjiet.attendancemonitor.data.local.entity.AttendanceSnapshotEntity
+import com.vnrvjiet.attendancemonitor.data.local.entity.EduPrimeAttendanceEntity
+import com.vnrvjiet.attendancemonitor.data.local.entity.SubjectMappingEntity
 import com.vnrvjiet.attendancemonitor.data.repository.*
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -13,9 +16,20 @@ data class SyncUiState(
     val lastSyncFormatted: String = "Never",
     val isSyncing: Boolean = false,
     val isAutoSyncEnabled: Boolean = true,
+    val hasUnviewedChanges: Boolean = false,
+    val dailyChanges: List<DailyChange> = emptyList(),
     val error: String? = null,
     val success: Boolean = false,
     val navigateToSetup: Boolean = false
+)
+
+data class DailyChange(
+    val subjectName: String,
+    val subjectCode: String,
+    val prevConducted: Int,
+    val prevAttended: Int,
+    val currConducted: Int,
+    val currAttended: Int
 )
 
 class SyncStatusViewModel(application: Application) : AndroidViewModel(application) {
@@ -26,6 +40,7 @@ class SyncStatusViewModel(application: Application) : AndroidViewModel(applicati
         db.eduPrimeAttendanceDao(),
         db.subjectMappingDao(),
         NotificationRepository(db.notificationDao()),
+        db.attendanceSnapshotDao(),
         settingsRepo,
         application
     )
@@ -36,14 +51,48 @@ class SyncStatusViewModel(application: Application) : AndroidViewModel(applicati
     val autoSyncEnabled = settingsRepo.autoSync
 
     val uiState: StateFlow<SyncUiState> = combine(
-        lastManualSyncAt,
-        lastAutoSyncAt,
-        autoSyncEnabled
-    ) { manual: Long, auto: Long, enabled: Boolean ->
+        listOf(
+            lastManualSyncAt,
+            lastAutoSyncAt,
+            autoSyncEnabled,
+            settingsRepo.hasUnviewedChanges,
+            db.eduPrimeAttendanceDao().getAllAttendance(),
+            db.attendanceSnapshotDao().getAllSnapshots(),
+            db.subjectMappingDao().getAllMappings()
+        )
+    ) { params ->
+        val manual = params[0] as Long
+        val auto = params[1] as Long
+        val enabled = params[2] as Boolean
+        val hasChanges = params[3] as Boolean
+        val current = params[4] as List<EduPrimeAttendanceEntity>
+        val snapshots = params[5] as List<AttendanceSnapshotEntity>
+        val mappings = params[6] as List<SubjectMappingEntity>
+
         val lastSync = if (manual > auto) manual else auto
+        val mappingMap = mappings.associate { it.subjectCode to it.subjectName }
+
+        val dailyChanges = if (hasChanges) {
+            current.mapNotNull { curr ->
+                val snap = snapshots.find { it.subjectCode == curr.subjectCode }
+                if (snap != null && (snap.conductedClasses != curr.conductedClasses || snap.attendedClasses != curr.attendedClasses)) {
+                    DailyChange(
+                        subjectName = mappingMap[curr.subjectCode] ?: curr.subjectName ?: curr.subjectCode,
+                        subjectCode = curr.subjectCode,
+                        prevConducted = snap.conductedClasses,
+                        prevAttended = snap.attendedClasses,
+                        currConducted = curr.conductedClasses,
+                        currAttended = curr.attendedClasses
+                    )
+                } else null
+            }
+        } else emptyList()
+
         SyncUiState(
             lastSyncFormatted = formatLastSync(lastSync),
             isAutoSyncEnabled = enabled,
+            hasUnviewedChanges = hasChanges,
+            dailyChanges = dailyChanges,
             success = lastSync > 0L
         )
     }.stateIn(
@@ -86,6 +135,12 @@ class SyncStatusViewModel(application: Application) : AndroidViewModel(applicati
 
     fun onNavigatedToSetup() {
         _navigateToSetup.value = false
+    }
+
+    fun acknowledgeChanges() {
+        viewModelScope.launch {
+            syncRepo.acknowledgeChanges()
+        }
     }
 
     private fun formatLastSync(timestamp: Long): String {

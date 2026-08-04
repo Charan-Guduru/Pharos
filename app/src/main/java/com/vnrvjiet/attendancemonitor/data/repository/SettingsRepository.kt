@@ -36,6 +36,9 @@ class SettingsRepository private constructor(context: Context) {
     private val _theme = MutableStateFlow(prefs.getString("app_theme", "System") ?: "System")
     val theme: StateFlow<String> = _theme.asStateFlow()
 
+    private val _hasUnviewedChanges = MutableStateFlow(prefs.getBoolean("has_unviewed_changes", false))
+    val hasUnviewedChanges: StateFlow<Boolean> = _hasUnviewedChanges.asStateFlow()
+
     private val prefListener = SharedPreferences.OnSharedPreferenceChangeListener { sharedPrefs, key ->
         when (key) {
             "auto_sync" -> _autoSync.value = sharedPrefs.getBoolean(key, true)
@@ -47,6 +50,7 @@ class SettingsRepository private constructor(context: Context) {
             "last_backup_at" -> _lastBackupAt.value = sharedPrefs.getLong(key, 0L)
             "last_auto_sync_at" -> _lastAutoSyncAt.value = sharedPrefs.getLong(key, 0L)
             "last_manual_sync_at" -> _lastManualSyncAt.value = sharedPrefs.getLong(key, 0L)
+            "has_unviewed_changes" -> _hasUnviewedChanges.value = sharedPrefs.getBoolean(key, false)
         }
     }
 
@@ -124,5 +128,10 @@ class SettingsRepository private constructor(context: Context) {
     fun setTheme(theme: String) {
         prefs.edit().putString("app_theme", theme).apply()
         _theme.value = theme
+    }
+
+    fun setHasUnviewedChanges(has: Boolean) {
+        prefs.edit().putBoolean("has_unviewed_changes", has).apply()
+        _hasUnviewedChanges.value = has
     }
 }
