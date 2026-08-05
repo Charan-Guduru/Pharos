@@ -45,33 +45,48 @@ class SyncRepository(
             return Result.failure(Exception("Missing credentials"))
         }
 
+        val timestamp = System.currentTimeMillis()
+
+        // 1. Day Transition Logic: If it's a new day, reset snapshot to represent "Yesterday's final state"
+        val existingSnapshots = snapshotDao.getAllSnapshotsList()
+        if (existingSnapshots.isNotEmpty()) {
+            val lastSnapshotUpdate = existingSnapshots.firstOrNull()?.lastUpdated ?: 0L
+            if (!isSameDay(lastSnapshotUpdate, timestamp)) {
+                Log.i(TAG, "New day detected. Wiping yesterday's comparison.")
+                // Take snapshot of current local data (yesterday's final state)
+                val yesterdayFinal = attendanceDao.getAllAttendanceList()
+                val freshSnapshots = yesterdayFinal.map {
+                    AttendanceSnapshotEntity(it.subjectCode, it.conductedClasses, it.attendedClasses, timestamp)
+                }
+                snapshotDao.updateSnapshot(freshSnapshots)
+                settingsRepo.setHasUnviewedChanges(false)
+            }
+        }
+
         val fetchResult = eduPrimeRepo.fetchAttendance(user, pass, dob)
         
         return if (fetchResult.isSuccess) {
             val remoteRecords = fetchResult.getOrNull() ?: emptyList()
-            val timestamp = System.currentTimeMillis()
             
-            // 1. Snapshot logic: Only update snapshot if it's a NEW day and user has viewed previous changes
-            val currentSnapshots = snapshotDao.getAllSnapshotsList()
-            val hasUnviewed = settingsRepo.hasUnviewedChanges.first()
-            
-            if (currentSnapshots.isEmpty()) {
+            // 2. Change Detection logic
+            val snapshots = snapshotDao.getAllSnapshotsList()
+            if (snapshots.isEmpty()) {
+                // Initial bootstrap: Store current portal data as baseline
                 val initialSnapshots = remoteRecords.map {
                     AttendanceSnapshotEntity(it.subjectCode, it.conductedClasses, it.attendedClasses, timestamp)
                 }
                 snapshotDao.updateSnapshot(initialSnapshots)
                 settingsRepo.setHasUnviewedChanges(false)
             } else {
-                val lastUpdate = currentSnapshots.firstOrNull()?.lastUpdated ?: 0L
-                if (!isSameDay(lastUpdate, timestamp) && !hasUnviewed) {
-                    val changed = remoteRecords.any { remote ->
-                        val snap = currentSnapshots.find { it.subjectCode == remote.subjectCode }
-                        snap == null || snap.conductedClasses != remote.conductedClasses || snap.attendedClasses != remote.attendedClasses
-                    }
-                    
-                    if (changed) {
-                        settingsRepo.setHasUnviewedChanges(true)
-                    }
+                // Detect if any subject has changed relative to the CURRENT snapshot
+                val hasNewChanges = remoteRecords.any { remote ->
+                    val snap = snapshots.find { it.subjectCode == remote.subjectCode }
+                    snap == null || snap.conductedClasses != remote.conductedClasses || snap.attendedClasses != remote.attendedClasses
+                }
+                
+                if (hasNewChanges) {
+                    Log.i(TAG, "New attendance changes detected.")
+                    settingsRepo.setHasUnviewedChanges(true)
                 }
             }
 
@@ -119,14 +134,18 @@ class SyncRepository(
                 cal1.get(Calendar.DAY_OF_YEAR) == cal2.get(Calendar.DAY_OF_YEAR)
     }
 
+    /**
+     * Acknowledges today's changes by updating the snapshot to the current state.
+     */
     suspend fun acknowledgeChanges() {
-        val currentAttendance = attendanceDao.getAllAttendance().first()
+        val currentAttendance = attendanceDao.getAllAttendanceList()
         val timestamp = System.currentTimeMillis()
         val newSnapshots = currentAttendance.map {
             AttendanceSnapshotEntity(it.subjectCode, it.conductedClasses, it.attendedClasses, timestamp)
         }
         snapshotDao.updateSnapshot(newSnapshots)
         settingsRepo.setHasUnviewedChanges(false)
+        Log.i(TAG, "Changes acknowledged. Snapshot updated.")
     }
 
     /**

@@ -22,6 +22,7 @@ class VerificationEngine(private val db: AppDatabase, private val context: Conte
         val subjects = db.subjectDao().getAllSubjectsList()
         val remoteData = db.eduPrimeAttendanceDao().getAllAttendanceList()
         val mappings = db.subjectMappingDao().getAllMappingsList()
+        val snapshots = db.attendanceSnapshotDao().getAllSnapshotsList()
         
         val lastSyncedAt = remoteData.firstOrNull()?.lastSyncedAt ?: 0L
         val mappingMap = mappings.associate { it.subjectCode to it.subjectName }
@@ -37,11 +38,12 @@ class VerificationEngine(private val db: AppDatabase, private val context: Conte
         }
 
         val (_, updatedRecords) = comparisonRepo.compare(
-            localRecords, 
-            timetable, 
-            subjects, 
-            remoteRecords,
-            lastSyncedAt
+            localRecords = localRecords, 
+            timetable = timetable, 
+            subjects = subjects, 
+            eduPrimeData = remoteRecords,
+            snapshots = snapshots,
+            lastSyncedAt = lastSyncedAt
         )
         
         val timetableToSubjectCode = timetable.associate { it.id to (subjects.find { s -> s.id == it.subjectId }?.subjectCode ?: "UNKNOWN") }
