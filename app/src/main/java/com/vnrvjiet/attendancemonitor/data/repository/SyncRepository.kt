@@ -1,5 +1,7 @@
 package com.vnrvjiet.attendancemonitor.data.repository
 
+import android.util.Log
+import com.vnrvjiet.attendancemonitor.data.local.AppDatabase
 import com.vnrvjiet.attendancemonitor.data.local.dao.AttendanceSnapshotDao
 import com.vnrvjiet.attendancemonitor.data.local.dao.EduPrimeAttendanceDao
 import com.vnrvjiet.attendancemonitor.data.local.dao.SubjectMappingDao
@@ -8,6 +10,8 @@ import com.vnrvjiet.attendancemonitor.data.local.entity.EduPrimeAttendanceEntity
 import com.vnrvjiet.attendancemonitor.util.NotificationHelper
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.util.Calendar
 
 class SyncRepository(
@@ -19,16 +23,27 @@ class SyncRepository(
     private val settingsRepo: SettingsRepository,
     private val context: android.content.Context? = null
 ) {
+    private val TAG = "SyncRepository"
     val syncedAttendance: Flow<List<EduPrimeAttendanceEntity>> = attendanceDao.getAllAttendance()
+    
+    companion object {
+        private val syncMutex = Mutex()
+    }
 
     /**
      * Performs synchronization and returns a Result.
      * The Boolean in Result indicates whether there are missing subject mappings.
      */
-    suspend fun performSync(): Result<Boolean> {
+    suspend fun performSync(): Result<Boolean> = syncMutex.withLock {
+        Log.d(TAG, "Starting synchronization...")
         val user = settingsRepo.getUsername()
         val pass = settingsRepo.getPassword()
         val dob = settingsRepo.getDob()
+
+        if (user.isEmpty() || pass.isEmpty()) {
+            Log.w(TAG, "Sync aborted: Missing credentials")
+            return Result.failure(Exception("Missing credentials"))
+        }
 
         val fetchResult = eduPrimeRepo.fetchAttendance(user, pass, dob)
         
@@ -41,7 +56,6 @@ class SyncRepository(
             val hasUnviewed = settingsRepo.hasUnviewedChanges.first()
             
             if (currentSnapshots.isEmpty()) {
-                // Initial snapshot creation
                 val initialSnapshots = remoteRecords.map {
                     AttendanceSnapshotEntity(it.subjectCode, it.conductedClasses, it.attendedClasses, timestamp)
                 }
@@ -50,12 +64,6 @@ class SyncRepository(
             } else {
                 val lastUpdate = currentSnapshots.firstOrNull()?.lastUpdated ?: 0L
                 if (!isSameDay(lastUpdate, timestamp) && !hasUnviewed) {
-                    // It's a new day and previous changes were acknowledged, so take a new snapshot of "Yesterday's final state"
-                    // (Actually, if we are syncing NOW, this IS today's first state. The "Snapshot" is what we compare AGAINST)
-                    // Requirement: "During the first successful synchronization of a new day: Compare Previous Snapshot ↓ Current synchronized values"
-                    // "After the comparison has been acknowledged... replace the snapshot with today's synchronized values."
-                    
-                    // So if it's a new day, we check if there are changes.
                     val changed = remoteRecords.any { remote ->
                         val snap = currentSnapshots.find { it.subjectCode == remote.subjectCode }
                         snap == null || snap.conductedClasses != remote.conductedClasses || snap.attendedClasses != remote.attendedClasses
@@ -81,16 +89,16 @@ class SyncRepository(
             attendanceDao.syncAttendance(entities)
             settingsRepo.setLastVerified(timestamp)
             
-            // Check for missing mappings
             val existingMappings = mappingDao.getAllMappings().first()
             val mappedCodes = existingMappings.map { it.subjectCode }.toSet()
             val hasMissing = remoteRecords.any { it.subjectCode !in mappedCodes }
             
+            Log.d(TAG, "Sync successful (Timestamp updated)")
             Result.success(hasMissing)
         } else {
             val errorMsg = fetchResult.exceptionOrNull()?.message ?: "Sync failed"
+            Log.e(TAG, "Sync failed: $errorMsg")
             
-            // Use repository for deduplication
             notificationRepo.addNotification(
                 title = "Synchronization Failed",
                 message = "Unable to synchronize with EduPrime: $errorMsg",
@@ -119,5 +127,33 @@ class SyncRepository(
         }
         snapshotDao.updateSnapshot(newSnapshots)
         settingsRepo.setHasUnviewedChanges(false)
+    }
+
+    /**
+     * Performs a silent sync on app startup if conditions are met.
+     */
+    suspend fun tryStartupSync() {
+        val enabled = settingsRepo.autoSync.first()
+        if (!enabled) return
+
+        val lastManual = settingsRepo.lastManualSyncAt.first()
+        val lastAuto = settingsRepo.lastAutoSyncAt.first()
+        val lastSync = if (lastManual > lastAuto) lastManual else lastAuto
+        
+        val fifteenMinutes = 15 * 60 * 1000L
+        if (System.currentTimeMillis() - lastSync > fifteenMinutes) {
+            Log.i(TAG, "Executing Smart Startup Sync...")
+            val result = performSync()
+            if (result.isSuccess) {
+                settingsRepo.setLastAutoSyncAt(System.currentTimeMillis())
+                // We also need to run verification if it was a startup sync
+                context?.let {
+                    val db = AppDatabase.getDatabase(it)
+                    VerificationEngine(db, it).run()
+                }
+            }
+        } else {
+            Log.d(TAG, "Startup Sync skipped: Last sync was recent")
+        }
     }
 }

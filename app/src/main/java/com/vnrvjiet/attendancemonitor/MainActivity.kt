@@ -13,9 +13,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.fragment.app.FragmentActivity
-import com.vnrvjiet.attendancemonitor.data.repository.SettingsRepository
+import androidx.lifecycle.lifecycleScope
+import com.vnrvjiet.attendancemonitor.data.local.AppDatabase
+import com.vnrvjiet.attendancemonitor.data.repository.*
 import com.vnrvjiet.attendancemonitor.ui.navigation.AppNavigation
 import com.vnrvjiet.attendancemonitor.ui.theme.PharosTheme
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 class MainActivity : FragmentActivity() {
     private val requestPermissionLauncher = registerForActivityResult(
@@ -32,6 +36,21 @@ class MainActivity : FragmentActivity() {
         
         val settingsRepository = SettingsRepository.getInstance(applicationContext)
         
+        // Smart Startup Sync
+        lifecycleScope.launch(Dispatchers.IO) {
+            val db = AppDatabase.getDatabase(applicationContext)
+            val syncRepo = SyncRepository(
+                eduPrimeRepo = EduPrimeRepository(),
+                attendanceDao = db.eduPrimeAttendanceDao(),
+                mappingDao = db.subjectMappingDao(),
+                notificationRepo = NotificationRepository(db.notificationDao()),
+                snapshotDao = db.attendanceSnapshotDao(),
+                settingsRepo = settingsRepository,
+                context = applicationContext
+            )
+            syncRepo.tryStartupSync()
+        }
+
         enableEdgeToEdge()
         setContent {
             val themePreference by settingsRepository.theme.collectAsState()

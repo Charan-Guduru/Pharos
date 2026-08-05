@@ -1,6 +1,7 @@
 package com.vnrvjiet.attendancemonitor.ui.screens.settings
 
 import android.app.Application
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.work.*
@@ -126,6 +127,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun toggleAutoSync(enabled: Boolean) {
         repository.setAutoSync(enabled)
         val workManager = WorkManager.getInstance(getApplication())
+        val TAG = "BackgroundSync"
+        
         if (enabled) {
             val constraints = Constraints.Builder()
                 .setRequiredNetworkType(NetworkType.CONNECTED)
@@ -141,8 +144,10 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                 ExistingPeriodicWorkPolicy.REPLACE,
                 syncRequest
             )
+            Log.i(TAG, "Worker Scheduled")
         } else {
             workManager.cancelUniqueWork("AttendanceSync")
+            Log.i(TAG, "Worker Cancelled")
         }
     }
     fun toggleAttendanceAlerts(enabled: Boolean) = repository.setAttendanceAlerts(enabled)
