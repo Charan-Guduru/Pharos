@@ -1,6 +1,11 @@
 package com.vnrvjiet.attendancemonitor.data.repository
 
 import android.util.Log
+import androidx.work.Constraints
+import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.NetworkType
+import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkManager
 import com.vnrvjiet.attendancemonitor.data.local.AppDatabase
 import com.vnrvjiet.attendancemonitor.data.local.dao.AttendanceSnapshotDao
 import com.vnrvjiet.attendancemonitor.data.local.dao.EduPrimeAttendanceDao
@@ -8,11 +13,13 @@ import com.vnrvjiet.attendancemonitor.data.local.dao.SubjectMappingDao
 import com.vnrvjiet.attendancemonitor.data.local.entity.AttendanceSnapshotEntity
 import com.vnrvjiet.attendancemonitor.data.local.entity.EduPrimeAttendanceEntity
 import com.vnrvjiet.attendancemonitor.util.NotificationHelper
+import com.vnrvjiet.attendancemonitor.worker.AttendanceSyncWorker
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.util.Calendar
+import java.util.concurrent.TimeUnit
 
 class SyncRepository(
     private val eduPrimeRepo: EduPrimeRepository,
@@ -53,7 +60,6 @@ class SyncRepository(
             val lastSnapshotUpdate = existingSnapshots.firstOrNull()?.lastUpdated ?: 0L
             if (!isSameDay(lastSnapshotUpdate, timestamp)) {
                 Log.i(TAG, "New day detected. Wiping yesterday's comparison.")
-                // Take snapshot of current local data (yesterday's final state)
                 val yesterdayFinal = attendanceDao.getAllAttendanceList()
                 val freshSnapshots = yesterdayFinal.map {
                     AttendanceSnapshotEntity(it.subjectCode, it.conductedClasses, it.attendedClasses, timestamp)
@@ -71,14 +77,12 @@ class SyncRepository(
             // 2. Change Detection logic
             val snapshots = snapshotDao.getAllSnapshotsList()
             if (snapshots.isEmpty()) {
-                // Initial bootstrap: Store current portal data as baseline
                 val initialSnapshots = remoteRecords.map {
                     AttendanceSnapshotEntity(it.subjectCode, it.conductedClasses, it.attendedClasses, timestamp)
                 }
                 snapshotDao.updateSnapshot(initialSnapshots)
                 settingsRepo.setHasUnviewedChanges(false)
             } else {
-                // Detect if any subject has changed relative to the CURRENT snapshot
                 val hasNewChanges = remoteRecords.any { remote ->
                     val snap = snapshots.find { it.subjectCode == remote.subjectCode }
                     snap == null || snap.conductedClasses != remote.conductedClasses || snap.attendedClasses != remote.attendedClasses
@@ -134,9 +138,6 @@ class SyncRepository(
                 cal1.get(Calendar.DAY_OF_YEAR) == cal2.get(Calendar.DAY_OF_YEAR)
     }
 
-    /**
-     * Acknowledges today's changes by updating the snapshot to the current state.
-     */
     suspend fun acknowledgeChanges() {
         val currentAttendance = attendanceDao.getAllAttendanceList()
         val timestamp = System.currentTimeMillis()
@@ -148,24 +149,21 @@ class SyncRepository(
         Log.i(TAG, "Changes acknowledged. Snapshot updated.")
     }
 
-    /**
-     * Performs a silent sync on app startup if conditions are met.
-     */
     suspend fun tryStartupSync() {
         val enabled = settingsRepo.autoSync.first()
         if (!enabled) return
 
         val lastManual = settingsRepo.lastManualSyncAt.first()
         val lastAuto = settingsRepo.lastAutoSyncAt.first()
-        val lastSync = if (lastManual > lastAuto) lastManual else lastAuto
+        val lastStartup = settingsRepo.lastStartupSyncAt.first()
+        val lastSync = maxOf(lastManual, maxOf(lastAuto, lastStartup))
         
         val fifteenMinutes = 15 * 60 * 1000L
         if (System.currentTimeMillis() - lastSync > fifteenMinutes) {
             Log.i(TAG, "Executing Smart Startup Sync...")
             val result = performSync()
             if (result.isSuccess) {
-                settingsRepo.setLastAutoSyncAt(System.currentTimeMillis())
-                // We also need to run verification if it was a startup sync
+                settingsRepo.setLastStartupSyncAt(System.currentTimeMillis())
                 context?.let {
                     val db = AppDatabase.getDatabase(it)
                     VerificationEngine(db, it).run()
@@ -173,6 +171,37 @@ class SyncRepository(
             }
         } else {
             Log.d(TAG, "Startup Sync skipped: Last sync was recent")
+        }
+    }
+
+    /**
+     * Ensures the periodic background worker is scheduled if enabled.
+     */
+    suspend fun initializeBackgroundWorker() {
+        val enabled = settingsRepo.autoSync.first()
+        if (!enabled) {
+            Log.d(TAG, "Background worker check: Disabled in settings")
+            return
+        }
+
+        context?.let { ctx ->
+            val workManager = WorkManager.getInstance(ctx)
+            
+            val constraints = Constraints.Builder()
+                .setRequiredNetworkType(NetworkType.CONNECTED)
+                .build()
+
+            val syncRequest = PeriodicWorkRequestBuilder<AttendanceSyncWorker>(1, TimeUnit.HOURS)
+                .setConstraints(constraints)
+                .addTag("AttendanceSync")
+                .build()
+
+            workManager.enqueueUniquePeriodicWork(
+                "AttendanceSync",
+                ExistingPeriodicWorkPolicy.KEEP,
+                syncRequest
+            )
+            Log.i(TAG, "Background worker initialization check complete (KEEP policy used)")
         }
     }
 }

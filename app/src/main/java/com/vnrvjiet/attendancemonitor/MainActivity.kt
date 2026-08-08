@@ -48,6 +48,10 @@ class MainActivity : FragmentActivity() {
                 settingsRepo = settingsRepository,
                 context = applicationContext
             )
+            // Ensure worker is scheduled if enabled
+            syncRepo.initializeBackgroundWorker()
+            
+            // Smart Startup Sync
             syncRepo.tryStartupSync()
         }
 

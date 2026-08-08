@@ -50,6 +50,7 @@ class SettingsRepository private constructor(context: Context) {
             "last_backup_at" -> _lastBackupAt.value = sharedPrefs.getLong(key, 0L)
             "last_auto_sync_at" -> _lastAutoSyncAt.value = sharedPrefs.getLong(key, 0L)
             "last_manual_sync_at" -> _lastManualSyncAt.value = sharedPrefs.getLong(key, 0L)
+            "last_startup_sync_at" -> _lastStartupSyncAt.value = sharedPrefs.getLong(key, 0L)
             "has_unviewed_changes" -> _hasUnviewedChanges.value = sharedPrefs.getBoolean(key, false)
         }
     }
@@ -69,6 +70,9 @@ class SettingsRepository private constructor(context: Context) {
 
     private val _lastManualSyncAt = MutableStateFlow(prefs.getLong("last_manual_sync_at", 0L))
     val lastManualSyncAt: StateFlow<Long> = _lastManualSyncAt.asStateFlow()
+
+    private val _lastStartupSyncAt = MutableStateFlow(prefs.getLong("last_startup_sync_at", 0L))
+    val lastStartupSyncAt: StateFlow<Long> = _lastStartupSyncAt.asStateFlow()
 
     fun getUsername(): String = prefs.getString("eduprime_user", "") ?: ""
     fun getPassword(): String = prefs.getString("eduprime_pass", "") ?: ""
@@ -103,6 +107,11 @@ class SettingsRepository private constructor(context: Context) {
     fun setLastManualSyncAt(timestamp: Long) {
         prefs.edit().putLong("last_manual_sync_at", timestamp).apply()
         _lastManualSyncAt.value = timestamp
+    }
+
+    fun setLastStartupSyncAt(timestamp: Long) {
+        prefs.edit().putLong("last_startup_sync_at", timestamp).apply()
+        _lastStartupSyncAt.value = timestamp
     }
 
     fun setAutoSync(enabled: Boolean) {

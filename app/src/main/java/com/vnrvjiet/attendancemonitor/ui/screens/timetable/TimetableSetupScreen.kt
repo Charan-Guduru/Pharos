@@ -191,8 +191,6 @@ fun AddPeriodDialog(
     var startTime by remember { mutableStateOf("09:00 AM") }
     var endTime by remember { mutableStateOf("10:00 AM") }
     var selectedSubjectCode by remember { mutableStateOf(subjects.firstOrNull()?.code ?: "") }
-    var faculty by remember { mutableStateOf("") }
-    var room by remember { mutableStateOf("") }
     var attendanceRequired by remember { mutableStateOf(true) }
     
     var expanded by remember { mutableStateOf(false) }
@@ -238,9 +236,6 @@ fun AddPeriodDialog(
                     OutlinedTextField(value = selectedSubjectCode, onValueChange = { selectedSubjectCode = it }, label = { Text("Subject Code") }, modifier = Modifier.fillMaxWidth())
                 }
 
-                OutlinedTextField(value = faculty, onValueChange = { faculty = it }, label = { Text("Faculty (Optional)") }, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(value = room, onValueChange = { room = it }, label = { Text("Room (Optional)") }, modifier = Modifier.fillMaxWidth())
-                
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Checkbox(checked = attendanceRequired, onCheckedChange = { attendanceRequired = it })
                     Text("Attendance Required")
@@ -248,7 +243,7 @@ fun AddPeriodDialog(
             }
         },
         confirmButton = {
-            Button(onClick = { onConfirm(startTime, endTime, selectedSubjectCode, faculty, room, attendanceRequired) }) {
+            Button(onClick = { onConfirm(startTime, endTime, selectedSubjectCode, "", "", attendanceRequired) }) {
                 Text("Add")
             }
         },

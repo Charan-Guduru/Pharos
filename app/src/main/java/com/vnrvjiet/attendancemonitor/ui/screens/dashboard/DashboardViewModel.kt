@@ -7,9 +7,7 @@ import com.vnrvjiet.attendancemonitor.data.local.AppDatabase
 import com.vnrvjiet.attendancemonitor.data.local.entity.*
 import com.vnrvjiet.attendancemonitor.data.model.AttendanceStatus
 import com.vnrvjiet.attendancemonitor.data.model.SyncStatus
-import com.vnrvjiet.attendancemonitor.data.repository.RoomAttendanceRepository
-import com.vnrvjiet.attendancemonitor.data.repository.RoomSubjectRepository
-import com.vnrvjiet.attendancemonitor.data.repository.RoomTimetableRepository
+import com.vnrvjiet.attendancemonitor.data.repository.*
 import com.vnrvjiet.attendancemonitor.util.TimeUtils
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -22,6 +20,7 @@ data class DashboardUiState(
     val overallPercentage: Float = 0f,
     val isSynced: Boolean = false,
     val isTimetableConfigured: Boolean = true,
+    val isUserLoggedIn: Boolean = false,
     val isLoading: Boolean = true,
     val classesChange: Int = 0,
     val isLead: Boolean = true
@@ -45,6 +44,7 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
     private val timetableRepo = RoomTimetableRepository(db.timetableDao())
     private val subjectRepo = RoomSubjectRepository(db.subjectDao())
     private val attendanceRepo = RoomAttendanceRepository(db.attendanceDao())
+    private val settingsRepo = SettingsRepository.getInstance(application)
     private val mappingDao = db.subjectMappingDao()
     private val eduPrimeDao = db.eduPrimeAttendanceDao()
 
@@ -70,7 +70,8 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
             attendanceRepo.getRecordsForDate(todayMidnight),
             eduPrimeDao.getAllAttendance(),
             mappingDao.getAllMappings(),
-            _selectedDay
+            _selectedDay,
+            settingsRepo.lastVerified
         )
     ) { params ->
         val allEntries = params[0] as List<TimetableEntryEntity>
@@ -79,6 +80,7 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
         val remoteData = params[3] as List<EduPrimeAttendanceEntity>
         val mappings = params[4] as List<SubjectMappingEntity>
         val selectedDay = params[5] as Int
+        val lastVerified = params[6] as Long
 
         val mappingMap = mappings.associate { it.subjectCode to it.subjectName }
         
@@ -131,6 +133,7 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
             overallPercentage = percentage,
             isSynced = remoteData.isNotEmpty(),
             isTimetableConfigured = allEntries.isNotEmpty(),
+            isUserLoggedIn = lastVerified > 0L,
             isLoading = false,
             classesChange = kotlin.math.max(0, classesChange),
             isLead = isLead

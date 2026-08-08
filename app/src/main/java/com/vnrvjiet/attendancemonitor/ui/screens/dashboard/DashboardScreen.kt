@@ -31,6 +31,7 @@ import java.util.*
 fun DashboardScreen(
     onNavigateToSetup: () -> Unit,
     onNavigateToRestore: () -> Unit,
+    onNavigateToLogin: () -> Unit,
     viewModel: DashboardViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -99,6 +100,7 @@ fun DashboardScreen(
                 }, 
                 onSetupTimetable = onNavigateToSetup,
                 onRestoreBackup = onNavigateToRestore,
+                onLoginToEduPrime = onNavigateToLogin,
                 viewModel = viewModel
             )
         } else {
@@ -113,6 +115,7 @@ fun LazyListScope.dailyTabContent(
     onMoreClick: (Long) -> Unit,
     onSetupTimetable: () -> Unit,
     onRestoreBackup: () -> Unit,
+    onLoginToEduPrime: () -> Unit,
     viewModel: DashboardViewModel
 ) {
     val actualToday = Calendar.getInstance().get(Calendar.DAY_OF_WEEK).let { if (it == Calendar.SUNDAY) 7 else it - 1 }
@@ -144,8 +147,12 @@ fun LazyListScope.dailyTabContent(
 
     item {
         if (!uiState.isTimetableConfigured) {
+            val primaryLabel = if (uiState.isUserLoggedIn) "Setup Timetable" else "EduPrime Login"
+            val onPrimaryClick = if (uiState.isUserLoggedIn) onSetupTimetable else onLoginToEduPrime
+            
             WelcomeCard(
-                onSetupClick = onSetupTimetable,
+                primaryLabel = primaryLabel,
+                onPrimaryClick = onPrimaryClick,
                 onRestoreClick = onRestoreBackup
             )
         } else if (uiState.isSynced) {
@@ -265,7 +272,8 @@ fun LazyListScope.dailyTabContent(
 
 @Composable
 fun WelcomeCard(
-    onSetupClick: () -> Unit,
+    primaryLabel: String,
+    onPrimaryClick: () -> Unit,
     onRestoreClick: () -> Unit
 ) {
     Card(
@@ -296,7 +304,7 @@ fun WelcomeCard(
             }
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "Create a timetable to begin tracking your attendance, or restore an existing backup.",
+                text = "Login to EduPrime to fetch your subjects and then create your timetable.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -306,11 +314,11 @@ fun WelcomeCard(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Button(
-                    onClick = onSetupClick,
+                    onClick = onPrimaryClick,
                     modifier = Modifier.weight(1f),
                     shape = MaterialTheme.shapes.medium
                 ) {
-                    Text("Setup Timetable")
+                    Text(primaryLabel)
                 }
                 OutlinedButton(
                     onClick = onRestoreClick,
