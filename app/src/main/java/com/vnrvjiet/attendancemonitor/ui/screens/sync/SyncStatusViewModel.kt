@@ -17,7 +17,11 @@ data class SyncUiState(
     val isSyncing: Boolean = false,
     val isAutoSyncEnabled: Boolean = true,
     val hasUnviewedChanges: Boolean = false,
+    val showAttendancePercentage: Boolean = false,
     val dailyChanges: List<DailyChange> = emptyList(),
+    val overallYesterday: Float? = null,
+    val overallToday: Float? = null,
+    val overallChange: Float? = null,
     val error: String? = null,
     val success: Boolean = false,
     val navigateToSetup: Boolean = false
@@ -56,6 +60,7 @@ class SyncStatusViewModel(application: Application) : AndroidViewModel(applicati
             lastAutoSyncAt,
             autoSyncEnabled,
             settingsRepo.hasUnviewedChanges,
+            settingsRepo.showAttendancePercentage,
             db.eduPrimeAttendanceDao().getAllAttendance(),
             db.attendanceSnapshotDao().getAllSnapshots(),
             db.subjectMappingDao().getAllMappings()
@@ -65,9 +70,10 @@ class SyncStatusViewModel(application: Application) : AndroidViewModel(applicati
         val auto = params[1] as Long
         val enabled = params[2] as Boolean
         val hasChanges = params[3] as Boolean
-        val current = params[4] as List<EduPrimeAttendanceEntity>
-        val snapshots = params[5] as List<AttendanceSnapshotEntity>
-        val mappings = params[6] as List<SubjectMappingEntity>
+        val showPercentage = params[4] as Boolean
+        val current = params[5] as List<EduPrimeAttendanceEntity>
+        val snapshots = params[6] as List<AttendanceSnapshotEntity>
+        val mappings = params[7] as List<SubjectMappingEntity>
 
         val lastSync = if (manual > auto) manual else auto
         val mappingMap = mappings.associate { it.subjectCode to it.subjectName }
@@ -88,11 +94,38 @@ class SyncStatusViewModel(application: Application) : AndroidViewModel(applicati
             }
         } else emptyList()
 
+        var overallYesterday: Float? = null
+        var overallToday: Float? = null
+        var overallChange: Float? = null
+
+        if (showPercentage && snapshots.isNotEmpty()) {
+            val totalYesterdayConducted = snapshots.sumOf { it.conductedClasses }
+            val totalYesterdayAttended = snapshots.sumOf { it.attendedClasses }
+            
+            val totalTodayConducted = current.sumOf { it.conductedClasses }
+            val totalTodayAttended = current.sumOf { it.attendedClasses }
+
+            if (totalYesterdayConducted > 0) {
+                overallYesterday = (totalYesterdayAttended.toFloat() / totalYesterdayConducted) * 100
+            }
+            if (totalTodayConducted > 0) {
+                overallToday = (totalTodayAttended.toFloat() / totalTodayConducted) * 100
+            }
+
+            if (overallYesterday != null && overallToday != null) {
+                overallChange = overallToday - overallYesterday
+            }
+        }
+
         SyncUiState(
             lastSyncFormatted = formatLastSync(lastSync),
             isAutoSyncEnabled = enabled,
             hasUnviewedChanges = hasChanges,
+            showAttendancePercentage = showPercentage,
             dailyChanges = dailyChanges,
+            overallYesterday = overallYesterday,
+            overallToday = overallToday,
+            overallChange = overallChange,
             success = lastSync > 0L
         )
     }.stateIn(

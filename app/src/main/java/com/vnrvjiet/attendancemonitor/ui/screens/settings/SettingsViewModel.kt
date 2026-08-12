@@ -23,6 +23,8 @@ data class SettingsUiState(
     val attendanceAlerts: Boolean = true,
     val milestoneAlerts: Boolean = true,
     val mismatchAlerts: Boolean = true,
+    val eduPrimeUpdates: Boolean = false,
+    val showAttendancePercentage: Boolean = false,
     val theme: String = "System",
     val isTestingLogin: Boolean = false,
     val loginTestResult: String? = null,
@@ -45,6 +47,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             repository.attendanceAlerts,
             repository.milestoneAlerts,
             repository.mismatchAlerts,
+            repository.eduPrimeUpdates,
+            repository.showAttendancePercentage,
             repository.theme,
             repository.lastVerified,
             _isTestingLogin,
@@ -59,11 +63,13 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             attendanceAlerts = params[1] as Boolean,
             milestoneAlerts = params[2] as Boolean,
             mismatchAlerts = params[3] as Boolean,
-            theme = params[4] as String,
-            lastVerified = params[5] as Long,
-            isTestingLogin = params[6] as Boolean,
-            loginTestResult = params[7] as String?,
-            cooldownSeconds = params[8] as Int
+            eduPrimeUpdates = params[4] as Boolean,
+            showAttendancePercentage = params[5] as Boolean,
+            theme = params[6] as String,
+            lastVerified = params[7] as Long,
+            isTestingLogin = params[8] as Boolean,
+            loginTestResult = params[9] as String?,
+            cooldownSeconds = params[10] as Int
         )
     }.stateIn(
         scope = viewModelScope,
@@ -153,5 +159,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun toggleAttendanceAlerts(enabled: Boolean) = repository.setAttendanceAlerts(enabled)
     fun toggleMilestoneAlerts(enabled: Boolean) = repository.setMilestoneAlerts(enabled)
     fun toggleMismatchAlerts(enabled: Boolean) = repository.setMismatchAlerts(enabled)
+    fun toggleEduPrimeUpdates(enabled: Boolean) = repository.setEduPrimeUpdates(enabled)
+    fun toggleShowAttendancePercentage(enabled: Boolean) = repository.setShowAttendancePercentage(enabled)
     fun setTheme(theme: String) = repository.setTheme(theme)
 }

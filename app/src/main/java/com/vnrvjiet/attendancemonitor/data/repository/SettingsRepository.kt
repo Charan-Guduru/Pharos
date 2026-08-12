@@ -33,6 +33,12 @@ class SettingsRepository private constructor(context: Context) {
     private val _mismatchAlerts = MutableStateFlow(prefs.getBoolean("alerts_mismatch", true))
     val mismatchAlerts: StateFlow<Boolean> = _mismatchAlerts.asStateFlow()
 
+    private val _eduPrimeUpdates = MutableStateFlow(prefs.getBoolean("eduprime_updates", false))
+    val eduPrimeUpdates: StateFlow<Boolean> = _eduPrimeUpdates.asStateFlow()
+
+    private val _showAttendancePercentage = MutableStateFlow(prefs.getBoolean("show_attendance_percentage", false))
+    val showAttendancePercentage: StateFlow<Boolean> = _showAttendancePercentage.asStateFlow()
+
     private val _theme = MutableStateFlow(prefs.getString("app_theme", "System") ?: "System")
     val theme: StateFlow<String> = _theme.asStateFlow()
 
@@ -45,6 +51,8 @@ class SettingsRepository private constructor(context: Context) {
             "alerts_attendance" -> _attendanceAlerts.value = sharedPrefs.getBoolean(key, true)
             "alerts_milestone" -> _milestoneAlerts.value = sharedPrefs.getBoolean(key, true)
             "alerts_mismatch" -> _mismatchAlerts.value = sharedPrefs.getBoolean(key, true)
+            "eduprime_updates" -> _eduPrimeUpdates.value = sharedPrefs.getBoolean(key, false)
+            "show_attendance_percentage" -> _showAttendancePercentage.value = sharedPrefs.getBoolean(key, false)
             "app_theme" -> _theme.value = sharedPrefs.getString(key, "System") ?: "System"
             "last_verified" -> _lastVerified.value = sharedPrefs.getLong(key, 0L)
             "last_backup_at" -> _lastBackupAt.value = sharedPrefs.getLong(key, 0L)
@@ -132,6 +140,16 @@ class SettingsRepository private constructor(context: Context) {
     fun setMismatchAlerts(enabled: Boolean) {
         prefs.edit().putBoolean("alerts_mismatch", enabled).apply()
         _mismatchAlerts.value = enabled
+    }
+
+    fun setEduPrimeUpdates(enabled: Boolean) {
+        prefs.edit().putBoolean("eduprime_updates", enabled).apply()
+        _eduPrimeUpdates.value = enabled
+    }
+
+    fun setShowAttendancePercentage(enabled: Boolean) {
+        prefs.edit().putBoolean("show_attendance_percentage", enabled).apply()
+        _showAttendancePercentage.value = enabled
     }
 
     fun setTheme(theme: String) {

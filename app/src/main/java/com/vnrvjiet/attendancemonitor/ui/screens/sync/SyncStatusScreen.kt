@@ -137,6 +137,10 @@ fun SyncStatusScreen(
                 Spacer(modifier = Modifier.height(24.dp))
                 DailyChangesSection(
                     changes = uiState.dailyChanges,
+                    showPercentage = uiState.showAttendancePercentage,
+                    overallYesterday = uiState.overallYesterday,
+                    overallToday = uiState.overallToday,
+                    overallChange = uiState.overallChange,
                     onAcknowledge = { viewModel.acknowledgeChanges() }
                 )
             }
@@ -168,7 +172,14 @@ fun SyncStatusScreen(
 }
 
 @Composable
-fun DailyChangesSection(changes: List<DailyChange>, onAcknowledge: () -> Unit) {
+fun DailyChangesSection(
+    changes: List<DailyChange>,
+    showPercentage: Boolean,
+    overallYesterday: Float?,
+    overallToday: Float?,
+    overallChange: Float?,
+    onAcknowledge: () -> Unit
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.1f)),
@@ -195,10 +206,61 @@ fun DailyChangesSection(changes: List<DailyChange>, onAcknowledge: () -> Unit) {
             
             changes.forEach { change ->
                 DailyChangeItem(change)
-                if (change != changes.last()) {
+                if (change != changes.last() || (showPercentage && overallToday != null)) {
                     HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                 }
             }
+
+            if (showPercentage && overallToday != null) {
+                OverallAttendanceComparison(
+                    yesterday = overallYesterday,
+                    today = overallToday,
+                    change = overallChange
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun OverallAttendanceComparison(yesterday: Float?, today: Float, change: Float?) {
+    Column {
+        Text(
+            text = "Overall Attendance",
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary
+        )
+        
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column {
+                Text("Yesterday", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(yesterday?.let { "${String.format(java.util.Locale.getDefault(), "%.2f", it)}%" } ?: "--", fontWeight = FontWeight.Medium)
+            }
+            Icon(Icons.AutoMirrored.Filled.ArrowForward, null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
+            Column(horizontalAlignment = Alignment.End) {
+                Text("Today", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("${String.format(java.util.Locale.getDefault(), "%.2f", today)}%", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+            }
+        }
+
+        if (change != null) {
+            val absChange = kotlin.math.abs(change)
+            val sign = if (change > 0) "+" else if (change < 0) "−" else ""
+            val label = if (change == 0f) "No change" else "$sign${String.format(java.util.Locale.getDefault(), "%.2f", absChange)} percentage points"
+            
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall,
+                color = if (change > 0) MaterialTheme.colorScheme.primary else if (change < 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 8.dp)
+            )
         }
     }
 }

@@ -397,6 +397,21 @@ fun SettingsScreen(
                 }
             }
 
+            SettingsSection(title = "Notifications") {
+                SettingsSwitchItem(
+                    title = "EduPrime Attendance Updates",
+                    subtitle = "Notify me when new attendance is published on EduPrime.",
+                    checked = uiState.eduPrimeUpdates,
+                    onCheckedChange = { viewModel.toggleEduPrimeUpdates(it) }
+                )
+                SettingsSwitchItem(
+                    title = "Show Attendance Percentage",
+                    subtitle = "Show current attendance percentage in Today's Changes.",
+                    checked = uiState.showAttendancePercentage,
+                    onCheckedChange = { viewModel.toggleShowAttendancePercentage(it) }
+                )
+            }
+
             SettingsSection(title = "Appearance") {
                 var expanded by remember { mutableStateOf(false) }
                 ExposedDropdownMenuBox(

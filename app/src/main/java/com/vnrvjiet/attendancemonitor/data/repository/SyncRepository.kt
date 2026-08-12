@@ -12,6 +12,7 @@ import com.vnrvjiet.attendancemonitor.data.local.dao.EduPrimeAttendanceDao
 import com.vnrvjiet.attendancemonitor.data.local.dao.SubjectMappingDao
 import com.vnrvjiet.attendancemonitor.data.local.entity.AttendanceSnapshotEntity
 import com.vnrvjiet.attendancemonitor.data.local.entity.EduPrimeAttendanceEntity
+import com.vnrvjiet.attendancemonitor.data.model.EduPrimeAttendanceRecord
 import com.vnrvjiet.attendancemonitor.util.NotificationHelper
 import com.vnrvjiet.attendancemonitor.worker.AttendanceSyncWorker
 import kotlinx.coroutines.flow.Flow
@@ -74,7 +75,7 @@ class SyncRepository(
         return if (fetchResult.isSuccess) {
             val remoteRecords = fetchResult.getOrNull() ?: emptyList()
             
-            // 2. Change Detection logic
+            // 2. Change Detection logic (for "Today's Changes" UI)
             val snapshots = snapshotDao.getAllSnapshotsList()
             if (snapshots.isEmpty()) {
                 val initialSnapshots = remoteRecords.map {
@@ -83,14 +84,29 @@ class SyncRepository(
                 snapshotDao.updateSnapshot(initialSnapshots)
                 settingsRepo.setHasUnviewedChanges(false)
             } else {
-                val hasNewChanges = remoteRecords.any { remote ->
+                val changedForUI = remoteRecords.filter { remote ->
                     val snap = snapshots.find { it.subjectCode == remote.subjectCode }
-                    snap == null || snap.conductedClasses != remote.conductedClasses || snap.attendedClasses != remote.attendedClasses
+                    // Only count as change if baseline exists and values differ
+                    snap != null && (snap.conductedClasses != remote.conductedClasses || snap.attendedClasses != remote.attendedClasses)
                 }
                 
-                if (hasNewChanges) {
-                    Log.i(TAG, "New attendance changes detected.")
+                if (changedForUI.isNotEmpty()) {
                     settingsRepo.setHasUnviewedChanges(true)
+                    
+                    // 3. Notification Logic: Only notify if these changes are NEW since the LAST synchronization
+                    // This prevents duplicate notifications for the same portal state while the card remains unacknowledged.
+                    if (settingsRepo.eduPrimeUpdates.first()) {
+                        val lastSyncedData = attendanceDao.getAllAttendanceList()
+                        val newlyChanged = changedForUI.filter { remote ->
+                            val last = lastSyncedData.find { it.subjectCode == remote.subjectCode }
+                            last == null || last.conductedClasses != remote.conductedClasses || last.attendedClasses != remote.attendedClasses
+                        }
+                        
+                        if (newlyChanged.isNotEmpty()) {
+                            Log.i(TAG, "New portal updates detected. Sending notification.")
+                            sendAttendanceUpdateNotification(newlyChanged, lastSyncedData)
+                        }
+                    }
                 }
             }
 
@@ -128,6 +144,46 @@ class SyncRepository(
                 NotificationHelper.showNotification(it, "Synchronization Failed", "Unable to synchronize with EduPrime.", 999)
             }
             Result.failure(fetchResult.exceptionOrNull() ?: Exception("Sync failed"))
+        }
+    }
+
+    /**
+     * Sends a notification for attendance updates detected on EduPrime.
+     */
+    private suspend fun sendAttendanceUpdateNotification(
+        newlyChanged: List<EduPrimeAttendanceRecord>,
+        lastSyncedData: List<EduPrimeAttendanceEntity>
+    ) {
+        if (newlyChanged.isEmpty()) return
+
+        val mappings = mappingDao.getAllMappings().first()
+        val mappingMap = mappings.associate { it.subjectCode to it.subjectName }
+
+        val title = "Attendance Updated"
+        val message = if (newlyChanged.size == 1) {
+            val remote = newlyChanged.first()
+            val last = lastSyncedData.find { it.subjectCode == remote.subjectCode }
+            val subjectName = mappingMap[remote.subjectCode] ?: remote.subjectName ?: remote.subjectCode
+            
+            if (last != null && remote.conductedClasses == last.conductedClasses + 1) {
+                if (remote.attendedClasses == last.attendedClasses + 1) {
+                    "$subjectName: Attendance marked Present"
+                } else if (remote.attendedClasses == last.attendedClasses) {
+                    "$subjectName: Attendance marked Absent"
+                } else {
+                    "Attendance has been published for $subjectName."
+                }
+            } else {
+                "Attendance has been published for $subjectName."
+            }
+        } else {
+            "Attendance has been updated for ${newlyChanged.size} subjects on EduPrime."
+        }
+
+        notificationRepo.addNotification(title, message, "EDUPRIME_UPDATE")
+
+        context?.let {
+            NotificationHelper.showNotification(it, title, message, 1001)
         }
     }
 

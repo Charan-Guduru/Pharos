@@ -1,6 +1,7 @@
 package com.vnrvjiet.attendancemonitor.ui.screens.timetable
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -19,6 +20,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.vnrvjiet.attendancemonitor.data.local.entity.TimetableEntryEntity
+import com.vnrvjiet.attendancemonitor.ui.components.WheelTimePickerDialog
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -194,6 +196,30 @@ fun AddPeriodDialog(
     var attendanceRequired by remember { mutableStateOf(true) }
     
     var expanded by remember { mutableStateOf(false) }
+    var showStartPicker by remember { mutableStateOf(false) }
+    var showEndPicker by remember { mutableStateOf(false) }
+
+    if (showStartPicker) {
+        WheelTimePickerDialog(
+            initialTime = startTime,
+            onDismiss = { showStartPicker = false },
+            onConfirm = {
+                startTime = it
+                showStartPicker = false
+            }
+        )
+    }
+
+    if (showEndPicker) {
+        WheelTimePickerDialog(
+            initialTime = endTime,
+            onDismiss = { showEndPicker = false },
+            onConfirm = {
+                endTime = it
+                showEndPicker = false
+            }
+        )
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -201,8 +227,44 @@ fun AddPeriodDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(value = startTime, onValueChange = { startTime = it }, label = { Text("Start") }, modifier = Modifier.weight(1f))
-                    OutlinedTextField(value = endTime, onValueChange = { endTime = it }, label = { Text("End") }, modifier = Modifier.weight(1f))
+                    Box(modifier = Modifier.weight(1f)) {
+                        OutlinedTextField(
+                            value = startTime,
+                            onValueChange = { },
+                            label = { Text("Start") },
+                            modifier = Modifier.fillMaxWidth(),
+                            readOnly = true,
+                            trailingIcon = {
+                                Icon(Icons.Default.AccessTime, contentDescription = null)
+                            }
+                        )
+                        // Invisible clickable layer over the field
+                        Box(
+                            modifier = Modifier
+                                .matchParentSize()
+                                .background(Color.Transparent)
+                                .clickable { showStartPicker = true }
+                        )
+                    }
+                    Box(modifier = Modifier.weight(1f)) {
+                        OutlinedTextField(
+                            value = endTime,
+                            onValueChange = { },
+                            label = { Text("End") },
+                            modifier = Modifier.fillMaxWidth(),
+                            readOnly = true,
+                            trailingIcon = {
+                                Icon(Icons.Default.AccessTime, contentDescription = null)
+                            }
+                        )
+                        // Invisible clickable layer over the field
+                        Box(
+                            modifier = Modifier
+                                .matchParentSize()
+                                .background(Color.Transparent)
+                                .clickable { showEndPicker = true }
+                        )
+                    }
                 }
 
                 ExposedDropdownMenuBox(
