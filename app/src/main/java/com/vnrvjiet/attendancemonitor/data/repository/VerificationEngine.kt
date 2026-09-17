@@ -4,7 +4,6 @@ import android.content.Context
 import android.util.Log
 import androidx.room.withTransaction
 import com.vnrvjiet.attendancemonitor.data.local.AppDatabase
-import com.vnrvjiet.attendancemonitor.data.model.AttendanceStatus
 import com.vnrvjiet.attendancemonitor.data.model.VerificationState
 import com.vnrvjiet.attendancemonitor.util.NotificationHelper
 
@@ -62,13 +61,8 @@ class VerificationEngine(private val db: AppDatabase, private val context: Conte
                     
                     when {
                         old.verificationState == VerificationState.PENDING && new.verificationState == VerificationState.VERIFIED -> {
-                            if (new.status == AttendanceStatus.BUNK) {
-                                notificationRepo.addNotification("Attendance Granted", "You received attendance for $subjectName.", "UNEXPECTED")
-                                NotificationHelper.showNotification(context, "Attendance Granted", "You received attendance for $subjectName.", new.id.toInt())
-                            } else {
-                                notificationRepo.addNotification("Attendance Verified", "Your attendance for $subjectName has been verified.", "VERIFIED")
-                                NotificationHelper.showNotification(context, "Attendance Verified", "Your attendance for $subjectName has been verified.", new.id.toInt())
-                            }
+                            notificationRepo.addNotification("Attendance Verified", "Your attendance for $subjectName has been verified.", "VERIFIED")
+                            NotificationHelper.showNotification(context, "Attendance Verified", "Your attendance for $subjectName has been verified.", new.id.toInt())
                         }
                         old.verificationState == VerificationState.PENDING && new.verificationState == VerificationState.MISMATCH -> {
                             notificationRepo.addNotification("Attendance Mismatch", "Your attendance for $subjectName differs from EduPrime.", "MISMATCH")

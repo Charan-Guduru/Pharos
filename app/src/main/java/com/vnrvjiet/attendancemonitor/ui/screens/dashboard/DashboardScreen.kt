@@ -58,9 +58,6 @@ fun DashboardScreen(
             onMarkWholeDay = { status ->
                 viewModel.markWholeDay(status)
             },
-            onMaxEverything = {
-                viewModel.maxEverythingExceptPresent()
-            },
             onDismiss = {
                 showMoreSheet = false
                 selectedEntryId = null

@@ -7,6 +7,7 @@ import com.vnrvjiet.attendancemonitor.data.local.AppDatabase
 import com.vnrvjiet.attendancemonitor.data.local.entity.*
 import com.vnrvjiet.attendancemonitor.data.model.AttendanceStatus
 import com.vnrvjiet.attendancemonitor.data.model.SyncStatus
+import com.vnrvjiet.attendancemonitor.data.model.VerificationState
 import com.vnrvjiet.attendancemonitor.data.repository.*
 import com.vnrvjiet.attendancemonitor.util.TimeUtils
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -161,7 +162,8 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
                 val updatedRecord = existingRecord.copy(
                     status = status,
                     lastModified = System.currentTimeMillis(),
-                    syncStatus = SyncStatus.PENDING
+                    syncStatus = SyncStatus.PENDING,
+                    verificationState = VerificationState.PENDING
                 )
                 attendanceRepo.updateRecord(updatedRecord)
             } else {
@@ -170,6 +172,7 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
                     timetableEntryId = timetableEntryId,
                     status = status,
                     syncStatus = SyncStatus.PENDING,
+                    verificationState = VerificationState.PENDING,
                     remarks = null,
                     lastModified = System.currentTimeMillis()
                 )
@@ -191,7 +194,8 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
                     attendanceRepo.updateRecord(existing.copy(
                         status = status,
                         lastModified = System.currentTimeMillis(),
-                        syncStatus = SyncStatus.PENDING
+                        syncStatus = SyncStatus.PENDING,
+                        verificationState = VerificationState.PENDING
                     ))
                 } else {
                     attendanceRepo.insertRecord(AttendanceRecordEntity(
@@ -199,38 +203,9 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
                         timetableEntryId = entry.id,
                         status = status,
                         syncStatus = SyncStatus.PENDING,
+                        verificationState = VerificationState.PENDING,
                         remarks = null,
                         lastModified = System.currentTimeMillis()
-                    ))
-                }
-            }
-        }
-    }
-
-    fun maxEverythingExceptPresent() {
-        viewModelScope.launch {
-            val selectedDay = _selectedDay.value
-            val date = getMidnightForDay(selectedDay)
-            val allTimetableEntries = timetableRepo.getAllTimetableEntries().first()
-            val todayEntries = allTimetableEntries.filter { it.dayOfWeek == selectedDay }
-            
-            todayEntries.forEach { entry ->
-                val existing = attendanceRepo.getRecordForEntryAndDate(entry.id, date)
-                // Only mark if no record exists or if current record is NOT Present
-                if (existing == null) {
-                    attendanceRepo.insertRecord(AttendanceRecordEntity(
-                        date = date,
-                        timetableEntryId = entry.id,
-                        status = AttendanceStatus.ABSENT,
-                        syncStatus = SyncStatus.PENDING,
-                        remarks = null,
-                        lastModified = System.currentTimeMillis()
-                    ))
-                } else if (existing.status != AttendanceStatus.PRESENT) {
-                    attendanceRepo.updateRecord(existing.copy(
-                        status = AttendanceStatus.ABSENT,
-                        lastModified = System.currentTimeMillis(),
-                        syncStatus = SyncStatus.PENDING
                     ))
                 }
             }

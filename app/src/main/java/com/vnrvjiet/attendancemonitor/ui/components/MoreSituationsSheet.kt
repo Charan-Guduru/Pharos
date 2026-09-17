@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.PlaylistAddCheck
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material3.*
@@ -30,7 +29,6 @@ data class SituationItem(
 fun MoreSituationsSheet(
     onStatusSelected: (AttendanceStatus) -> Unit,
     onMarkWholeDay: (AttendanceStatus) -> Unit,
-    onMaxEverything: () -> Unit,
     onDismiss: () -> Unit
 ) {
     val situations = listOf(
@@ -114,16 +112,6 @@ fun MoreSituationsSheet(
                 color = Color(0xFFEF5350),
                 onClick = {
                     onMarkWholeDay(AttendanceStatus.ABSENT)
-                    onDismiss()
-                }
-            )
-
-            ActionRowButton(
-                label = "Max Everything Except Present",
-                icon = Icons.AutoMirrored.Filled.PlaylistAddCheck,
-                color = MaterialTheme.colorScheme.secondary,
-                onClick = {
-                    onMaxEverything()
                     onDismiss()
                 }
             )
