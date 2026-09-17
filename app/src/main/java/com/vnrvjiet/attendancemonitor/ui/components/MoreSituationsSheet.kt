@@ -1,7 +1,10 @@
 package com.vnrvjiet.attendancemonitor.ui.components
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.PlaylistAddCheck
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material3.*
@@ -12,6 +15,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.vnrvjiet.attendancemonitor.data.model.AttendanceStatus
 
 data class SituationItem(
@@ -25,6 +29,8 @@ data class SituationItem(
 @Composable
 fun MoreSituationsSheet(
     onStatusSelected: (AttendanceStatus) -> Unit,
+    onMarkWholeDay: (AttendanceStatus) -> Unit,
+    onMaxEverything: () -> Unit,
     onDismiss: () -> Unit
 ) {
     val situations = listOf(
@@ -43,7 +49,12 @@ fun MoreSituationsSheet(
         containerColor = MaterialTheme.colorScheme.surface,
         contentColor = MaterialTheme.colorScheme.onSurface
     ) {
-        Column(modifier = Modifier.padding(16.dp).padding(bottom = 32.dp)) {
+        Column(
+            modifier = Modifier
+                .padding(16.dp)
+                .padding(bottom = 32.dp)
+                .verticalScroll(rememberScrollState())
+        ) {
             Text(
                 text = "More Situations", 
                 style = MaterialTheme.typography.titleLarge,
@@ -59,43 +70,63 @@ fun MoreSituationsSheet(
             Spacer(modifier = Modifier.height(16.dp))
 
             situations.forEach { situation ->
-                Surface(
+                SituationButton(
+                    item = situation,
                     onClick = {
                         onStatusSelected(situation.status)
                         onDismiss()
-                    },
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                    shape = MaterialTheme.shapes.medium,
-                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Surface(
-                            shape = androidx.compose.foundation.shape.CircleShape,
-                            color = situation.color.copy(alpha = 0.1f),
-                            modifier = Modifier.size(40.dp)
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(situation.icon, contentDescription = null, tint = situation.color, modifier = Modifier.size(20.dp))
-                            }
-                        }
-                        Spacer(modifier = Modifier.width(16.dp))
-                        Text(
-                            text = situation.label, 
-                            modifier = Modifier.weight(1f), 
-                            fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Icon(
-                            Icons.Outlined.ChevronRight, 
-                            contentDescription = null, 
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
                     }
-                }
+                )
             }
+
+            HorizontalDivider(
+                modifier = Modifier.padding(vertical = 16.dp),
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+            )
+
+            Text(
+                text = "Whole Day Actions", 
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Text(
+                text = "Apply attendance to every period in the current day.", 
+                color = MaterialTheme.colorScheme.onSurfaceVariant, 
+                style = MaterialTheme.typography.bodySmall
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            ActionRowButton(
+                label = "Mark Entire Day as Holiday",
+                icon = Icons.Default.DateRange,
+                color = Color(0xFF2196F3),
+                onClick = {
+                    onMarkWholeDay(AttendanceStatus.HOLIDAY)
+                    onDismiss()
+                }
+            )
+
+            ActionRowButton(
+                label = "Mark Entire Day as Absent",
+                icon = Icons.Default.EventBusy,
+                color = Color(0xFFEF5350),
+                onClick = {
+                    onMarkWholeDay(AttendanceStatus.ABSENT)
+                    onDismiss()
+                }
+            )
+
+            ActionRowButton(
+                label = "Max Everything Except Present",
+                icon = Icons.AutoMirrored.Filled.PlaylistAddCheck,
+                color = MaterialTheme.colorScheme.secondary,
+                onClick = {
+                    onMaxEverything()
+                    onDismiss()
+                }
+            )
             
             Spacer(modifier = Modifier.height(16.dp))
             Button(
@@ -108,6 +139,74 @@ fun MoreSituationsSheet(
             ) {
                 Text("Cancel")
             }
+        }
+    }
+}
+
+@Composable
+fun SituationButton(item: SituationItem, onClick: () -> Unit) {
+    Surface(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        shape = MaterialTheme.shapes.medium,
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Surface(
+                shape = androidx.compose.foundation.shape.CircleShape,
+                color = item.color.copy(alpha = 0.1f),
+                modifier = Modifier.size(40.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(item.icon, contentDescription = null, tint = item.color, modifier = Modifier.size(20.dp))
+                }
+            }
+            Spacer(modifier = Modifier.width(16.dp))
+            Text(
+                text = item.label, 
+                modifier = Modifier.weight(1f), 
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Icon(
+                Icons.Outlined.ChevronRight, 
+                contentDescription = null, 
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+fun ActionRowButton(
+    label: String,
+    icon: ImageVector,
+    color: Color,
+    onClick: () -> Unit
+) {
+    Surface(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        shape = MaterialTheme.shapes.medium,
+        border = androidx.compose.foundation.BorderStroke(1.dp, color.copy(alpha = 0.2f)),
+        color = Color.Transparent
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(20.dp))
+            Spacer(modifier = Modifier.width(16.dp))
+            Text(
+                text = label, 
+                modifier = Modifier.weight(1f), 
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface,
+                fontSize = 14.sp
+            )
         }
     }
 }
