@@ -17,6 +17,9 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        
+        buildConfigField("String", "GITHUB_OWNER", "\"Charan-Guduru\"")
+        buildConfigField("String", "GITHUB_REPO", "\"Pharos\"")
     }
 
     buildTypes {

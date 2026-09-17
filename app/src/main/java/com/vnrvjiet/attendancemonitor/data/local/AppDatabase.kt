@@ -6,6 +6,7 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import androidx.sqlite.db.SupportSQLiteDatabase
+import androidx.room.migration.Migration
 import com.vnrvjiet.attendancemonitor.data.local.dao.AttendanceDao
 import com.vnrvjiet.attendancemonitor.data.local.dao.AttendanceSnapshotDao
 import com.vnrvjiet.attendancemonitor.data.local.dao.EduPrimeAttendanceDao
@@ -58,11 +59,24 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "attendance_db"
                 )
-                .fallbackToDestructiveMigration()
+                .addMigrations(MIGRATION_5_6)
                 .addCallback(DatabaseCallback())
                 .build()
                 INSTANCE = instance
                 instance
+            }
+        }
+
+        private val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `attendance_snapshots` (" +
+                            "`subjectCode` TEXT NOT NULL, " +
+                            "`conductedClasses` INTEGER NOT NULL, " +
+                            "`attendedClasses` INTEGER NOT NULL, " +
+                            "`lastUpdated` INTEGER NOT NULL, " +
+                            "PRIMARY KEY(`subjectCode`))"
+                )
             }
         }
 

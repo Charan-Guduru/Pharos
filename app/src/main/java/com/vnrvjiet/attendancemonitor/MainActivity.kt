@@ -16,6 +16,7 @@ import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.lifecycleScope
 import com.vnrvjiet.attendancemonitor.data.local.AppDatabase
 import com.vnrvjiet.attendancemonitor.data.repository.*
+import com.vnrvjiet.attendancemonitor.ui.components.UpdateDialog
 import com.vnrvjiet.attendancemonitor.ui.navigation.AppNavigation
 import com.vnrvjiet.attendancemonitor.ui.theme.PharosTheme
 import kotlinx.coroutines.Dispatchers
@@ -35,6 +36,7 @@ class MainActivity : FragmentActivity() {
         }
         
         val settingsRepository = SettingsRepository.getInstance(applicationContext)
+        val updateRepository = UpdateRepository.getInstance(applicationContext)
         
         // Smart Startup Sync
         lifecycleScope.launch(Dispatchers.IO) {
@@ -53,11 +55,16 @@ class MainActivity : FragmentActivity() {
             
             // Smart Startup Sync
             syncRepo.tryStartupSync()
+            
+            val showDialogIntent = intent?.getBooleanExtra("SHOW_UPDATE_DIALOG", false) == true
+            // Check for updates
+            updateRepository.checkForUpdate(manualCheck = showDialogIntent)
         }
 
         enableEdgeToEdge()
         setContent {
             val themePreference by settingsRepository.theme.collectAsState()
+            val updateState by updateRepository.updateState.collectAsState()
             
             PharosTheme(themePreference = themePreference) {
                 Surface(
@@ -65,6 +72,18 @@ class MainActivity : FragmentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     AppNavigation()
+                    
+                    if (updateState is UpdateState.Available || updateState is UpdateState.Downloading || updateState is UpdateState.ReadyToInstall || updateState is UpdateState.DownloadFailed || updateState is UpdateState.Installing) {
+                        UpdateDialog(
+                            updateState = updateState,
+                            onDownload = { manifest -> updateRepository.downloadAndInstallUpdate(manifest) },
+                            onInstall = { uri -> updateRepository.installUpdate(uri) },
+                            onDismiss = { 
+                                intent?.putExtra("SHOW_UPDATE_DIALOG", false)
+                                updateRepository.dismissUpdate() 
+                            }
+                        )
+                    }
                 }
             }
         }

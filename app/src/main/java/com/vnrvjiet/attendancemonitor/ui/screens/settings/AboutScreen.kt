@@ -5,6 +5,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -18,6 +19,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.vnrvjiet.attendancemonitor.BuildConfig
 import com.vnrvjiet.attendancemonitor.data.local.AppDatabase
 import com.vnrvjiet.attendancemonitor.data.repository.SettingsRepository
+import com.vnrvjiet.attendancemonitor.data.repository.UpdateRepository
+import com.vnrvjiet.attendancemonitor.data.repository.UpdateState
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -28,12 +32,17 @@ fun AboutScreen(
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val settingsRepo = remember { SettingsRepository.getInstance(context) }
+    val updateRepo = remember { UpdateRepository.getInstance(context) }
+    val updateState by updateRepo.updateState.collectAsStateWithLifecycle()
+    
     val lastSync by settingsRepo.lastAutoSyncAt.collectAsStateWithLifecycle()
     val lastManual by settingsRepo.lastManualSyncAt.collectAsStateWithLifecycle()
     
     val actualLastSync = if (lastSync > lastManual) lastSync else lastManual
     val sdf = remember { SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault()) }
     val lastSyncStr = if (actualLastSync == 0L) "Never" else sdf.format(Date(actualLastSync))
+
+    val scope = rememberCoroutineScope()
 
     Scaffold(
         topBar = {
@@ -91,6 +100,41 @@ fun AboutScreen(
             )
 
             Spacer(modifier = Modifier.height(40.dp))
+
+            Button(
+                onClick = { 
+                    scope.launch {
+                        updateRepo.checkForUpdate(manualCheck = true)
+                    }
+                },
+                modifier = Modifier.fillMaxWidth().height(50.dp),
+                shape = MaterialTheme.shapes.medium
+            ) {
+                if (updateState is UpdateState.Checking) {
+                    CircularProgressIndicator(modifier = Modifier.size(20.dp), color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text("Checking...")
+                } else if (updateState is UpdateState.NotAvailable) {
+                    Icon(Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(20.dp))
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text("You're up to date")
+                } else if (updateState is UpdateState.Error) {
+                    Text("Check for Updates")
+                } else {
+                    Text("Check for Updates")
+                }
+            }
+            
+            if (updateState is UpdateState.Error) {
+                Text(
+                    text = (updateState as UpdateState.Error).message,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
 
             AboutInfoCard {
                 AboutInfoItem("Developed by", "Raizen")
