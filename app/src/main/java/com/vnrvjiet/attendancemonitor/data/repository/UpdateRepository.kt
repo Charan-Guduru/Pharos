@@ -124,20 +124,52 @@ class UpdateRepository private constructor(private val context: Context) {
         // Regex looks for numbers in parentheses, e.g. "Pharos v1.1.0 (12)" -> 12
         val codeRegex = "\\((\\d+)\\)".toRegex()
         val codeMatch = codeRegex.find(release.name) ?: codeRegex.find(release.tagName)
-        val versionCode = codeMatch?.groupValues?.get(1)?.toIntOrNull() 
-            ?: release.tagName.filter { it.isDigit() }.toIntOrNull() // Fallback to all digits in tag
-            ?: 0
+        val remoteVersionCode = codeMatch?.groupValues?.get(1)?.toIntOrNull() 
 
         // 2. Find APK asset
         val apkAsset = release.assets.find { it.name.endsWith(".apk", ignoreCase = true) }
             ?: return null
 
+        val remoteVersionName = release.tagName.removePrefix("v")
+
+        // 3. Fallback logic: If versionCode is not in title, use semantic comparison of versionName
+        val finalVersionCode = if (remoteVersionCode != null) {
+            remoteVersionCode
+        } else {
+            // If we can't find a versionCode, we compare versionNames.
+            // If remote is newer semantically, we return a "fake" high versionCode
+            // to trigger the update check 'manifest.versionCode > currentVersionCode'
+            if (isNewerVersion(remoteVersionName, BuildConfig.VERSION_NAME)) {
+                BuildConfig.VERSION_CODE + 1
+            } else {
+                BuildConfig.VERSION_CODE
+            }
+        }
+
         return UpdateManifest(
-            versionCode = versionCode,
-            versionName = release.tagName.removePrefix("v"),
+            versionCode = finalVersionCode,
+            versionName = remoteVersionName,
             downloadUrl = apkAsset.downloadUrl,
             releaseNotes = release.body
         )
+    }
+
+    private fun isNewerVersion(remote: String, local: String): Boolean {
+        try {
+            val remoteParts = remote.split(".").mapNotNull { it.toIntOrNull() }
+            val localParts = local.split(".").mapNotNull { it.toIntOrNull() }
+            
+            val maxLength = maxOf(remoteParts.size, localParts.size)
+            for (i in 0 until maxLength) {
+                val r = remoteParts.getOrElse(i) { 0 }
+                val l = localParts.getOrElse(i) { 0 }
+                if (r > l) return true
+                if (r < l) return false
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Version comparison failed", e)
+        }
+        return false
     }
 
     private suspend fun handleAutomaticUpdateDetection(manifest: UpdateManifest) {

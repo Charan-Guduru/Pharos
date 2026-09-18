@@ -17,6 +17,14 @@ import com.vnrvjiet.attendancemonitor.util.TimeUtils
 class AttendanceComparisonRepository {
     private val TAG = "AttendanceComparison"
 
+    private val ATTENDANCE_SEEKING_STATUSES = setOf(
+        AttendanceStatus.PRESENT,
+        AttendanceStatus.SPORTS_EVENT,
+        AttendanceStatus.COLLEGE_EVENT,
+        AttendanceStatus.HACKATHON,
+        AttendanceStatus.VOLUNTEER
+    )
+
     fun compare(
         localRecords: List<AttendanceRecordEntity>,
         timetable: List<TimetableEntryEntity>,
@@ -103,7 +111,7 @@ class AttendanceComparisonRepository {
                             // Delta Logic (Immune to historical surplus)
                             val deltaLocalPresent = recordsAfterSnapshot
                                 .take(localPos - countBeforeSnapshot)
-                                .count { it.status == AttendanceStatus.PRESENT }
+                                .count { it.status in ATTENDANCE_SEEKING_STATUSES }
                             
                             val deltaPortalAttended = remote.attendedClasses - basePortalAttended
                             
@@ -116,7 +124,7 @@ class AttendanceComparisonRepository {
                             }
                         } else {
                             // Historical Total Logic (Fall back to total counts for records before the snapshot)
-                            val localPresentCount = sorted.take(localPos).count { it.status == AttendanceStatus.PRESENT }
+                            val localPresentCount = sorted.take(localPos).count { it.status in ATTENDANCE_SEEKING_STATUSES }
                             if (remote.attendedClasses >= localPresentCount) {
                                 VerificationState.VERIFIED
                             } else {
@@ -133,7 +141,7 @@ class AttendanceComparisonRepository {
         val localAggregates = updatedLocalRecords.groupBy { record ->
             timetableInfo[record.timetableEntryId]?.first ?: "UNKNOWN"
         }.mapValues { (_, records) ->
-            val attended = records.count { it.status == AttendanceStatus.PRESENT }
+            val attended = records.count { it.status in ATTENDANCE_SEEKING_STATUSES }
             val conducted = records.size
             Pair(attended, conducted)
         }
