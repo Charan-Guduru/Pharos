@@ -4,13 +4,32 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.vnrvjiet.attendancemonitor.data.local.AppDatabase
+import com.vnrvjiet.attendancemonitor.data.local.entity.TimetableEntryEntity
 import com.vnrvjiet.attendancemonitor.data.repository.*
+import com.vnrvjiet.attendancemonitor.util.TimeUtils
 import kotlinx.coroutines.flow.*
 import java.text.SimpleDateFormat
 import java.util.*
 import kotlin.math.ceil
 import kotlin.math.floor
 import kotlin.math.max
+
+data class DailyForecastModel(
+    val date: Long,
+    val classCount: Int,
+    val isSunday: Boolean = false,
+    val isLeave: Boolean = false
+)
+
+data class LeaveForecastUiState(
+    val selectedDates: List<Long>,
+    val currentPercentage: Float,
+    val predictedPercentage: Float,
+    val totalClassesMissed: Int,
+    val change: Float,
+    val status: String,
+    val dailyBreakdown: List<DailyForecastModel> = emptyList()
+)
 
 data class StatisticsUiState(
     val overallPercentage: Float = 0f,
@@ -41,6 +60,7 @@ data class SubjectStatUiModel(
 class StatisticsViewModel(application: Application) : AndroidViewModel(application) {
     private val db = AppDatabase.getDatabase(application)
     private val subjectRepo = RoomSubjectRepository(db.subjectDao())
+    private val timetableRepo = RoomTimetableRepository(db.timetableDao())
     private val settingsRepo = SettingsRepository.getInstance(application)
     private val syncRepo = SyncRepository(
         EduPrimeRepository(),
@@ -51,6 +71,141 @@ class StatisticsViewModel(application: Application) : AndroidViewModel(applicati
         settingsRepo,
         application
     )
+
+    private val _selectedDates = MutableStateFlow<Set<Long>>(emptySet())
+    val selectedDates = _selectedDates.asStateFlow()
+
+    private val _showForecast = MutableStateFlow(false)
+    val showForecast = _showForecast.asStateFlow()
+
+    fun toggleForecastDate(date: Long) {
+        val current = _selectedDates.value.toMutableSet()
+        // We only care about the date part
+        val cal = Calendar.getInstance().apply { 
+            timeInMillis = date
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+        val normalizedDate = cal.timeInMillis
+
+        if (current.contains(normalizedDate)) {
+            current.remove(normalizedDate)
+        } else {
+            current.add(normalizedDate)
+        }
+        _selectedDates.value = current
+    }
+
+    fun clearForecastDates() {
+        _selectedDates.value = emptySet()
+    }
+
+    fun setShowForecast(show: Boolean) {
+        _showForecast.value = show
+    }
+
+    val forecastState: StateFlow<LeaveForecastUiState?> = combine(
+        syncRepo.syncedAttendance,
+        timetableRepo.getAllTimetableEntries(),
+        subjectRepo.getAllSubjects(),
+        _selectedDates
+    ) { remoteData, timetable, subjects, leaveDates ->
+        if (remoteData.isEmpty() || leaveDates.isEmpty()) return@combine null
+
+        val sortedLeaveDates = leaveDates.toList().sorted()
+        val furthestLeaveDate = sortedLeaveDates.last()
+
+        val currentAttended = remoteData.sumOf { it.attendedClasses }
+        val currentConducted = remoteData.sumOf { it.conductedClasses }
+        val currentPercentage = if (currentConducted > 0) (currentAttended.toFloat() / currentConducted * 100) else 0f
+
+        val todayCal = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+        val todayMillis = todayCal.timeInMillis
+        val currentMinutes = Calendar.getInstance().run { get(Calendar.HOUR_OF_DAY) * 60 + get(Calendar.MINUTE) }
+
+        var predictedAttended = currentAttended
+        var predictedConducted = currentConducted
+        var totalClassesMissed = 0
+        val dailyBreakdown = mutableListOf<DailyForecastModel>()
+
+        // Iterate through each day from today until furthestLeaveDate
+        val iterCal = Calendar.getInstance().apply { timeInMillis = todayMillis }
+        val finalCal = Calendar.getInstance().apply { timeInMillis = furthestLeaveDate }
+
+        while (!iterCal.after(finalCal)) {
+            val dayOfWeek = iterCal.get(Calendar.DAY_OF_WEEK)
+            val mappedDay = if (dayOfWeek == Calendar.SUNDAY) 7 else dayOfWeek - 1
+            val currentTime = iterCal.timeInMillis
+            val isToday = currentTime == todayMillis
+            val isLeaveDay = leaveDates.contains(currentTime)
+
+            if (mappedDay == 7) {
+                if (isLeaveDay) {
+                    dailyBreakdown.add(DailyForecastModel(currentTime, 0, isSunday = true, isLeave = true))
+                }
+            } else {
+                val dayEntries = timetable.filter { it.dayOfWeek == mappedDay }
+                var dayClassesMissed = 0
+
+                dayEntries.forEach { entry ->
+                    // For today, only count future classes
+                    val endMinutes = TimeUtils.parseTimeToMinutes(entry.endTime)
+                    if (!isToday || endMinutes > currentMinutes) {
+                        val subject = subjects.find { it.id == entry.subjectId }
+                        if (subject?.isAttendanceSubject == true) {
+                            val units = calculateAttendanceUnits(entry)
+                            predictedConducted += units
+                            
+                            if (isLeaveDay) {
+                                // Explicitly selected leave date
+                                totalClassesMissed += units
+                                dayClassesMissed += units
+                            } else {
+                                // Normal future day (assumed present)
+                                predictedAttended += units
+                            }
+                        }
+                    }
+                }
+                if (isLeaveDay) {
+                    dailyBreakdown.add(DailyForecastModel(currentTime, dayClassesMissed, isLeave = true))
+                }
+            }
+            iterCal.add(Calendar.DAY_OF_YEAR, 1)
+        }
+
+        val predictedPercentage = if (predictedConducted > 0) (predictedAttended.toFloat() / predictedConducted * 100) else 0f
+        val change = predictedPercentage - currentPercentage
+
+        LeaveForecastUiState(
+            selectedDates = sortedLeaveDates,
+            currentPercentage = currentPercentage,
+            predictedPercentage = predictedPercentage,
+            totalClassesMissed = totalClassesMissed,
+            change = change,
+            status = getStatusLabel(predictedPercentage),
+            dailyBreakdown = dailyBreakdown
+        )
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    private fun calculateAttendanceUnits(entry: TimetableEntryEntity): Int {
+        val startMinutes = TimeUtils.parseTimeToMinutes(entry.startTime)
+        val endMinutes = TimeUtils.parseTimeToMinutes(entry.endTime)
+        val durationMinutes = endMinutes - startMinutes
+        return if (durationMinutes > 0) {
+            // Standard rule: 1 hour = 1 unit. 
+            // We round to the nearest hour to handle slight deviations if any, 
+            // but the prompt says 3-hour lab = 3 classes.
+            (durationMinutes + 30) / 60 
+        } else 0
+    }
 
     val uiState: StateFlow<StatisticsUiState> = combine(
         subjectRepo.getAllSubjects(),
