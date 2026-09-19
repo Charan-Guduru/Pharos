@@ -126,18 +126,18 @@ class AttendanceComparisonRepository {
                                 // deltaPortalAttended must cover all claimed attendance up to this point
                                 if (expectsAttendance) {
                                     if (deltaPortalAttended >= deltaLocalPresent) {
-                                        VerificationState.VERIFIED to "Portal attendance increased (+$deltaPortalAttended), confirming your record."
+                                        VerificationState.VERIFIED to "Portal attendance increased, confirming your record."
                                     } else {
-                                        VerificationState.MISMATCH to "Portal attendance did not increase (+$deltaPortalAttended), but you marked Present/Special."
+                                        VerificationState.MISMATCH to "EduPrime did not record the expected attendance for this class."
                                     }
                                 } else {
                                     // If student claims absence/bunk/holiday
                                     // The portal must NOT have granted attendance for this specific slot.
                                     // Meaning: Total attended <= Total claimed presents
                                     if (deltaPortalAttended <= deltaLocalPresent) {
-                                        VerificationState.VERIFIED to "Portal result matches your Absent/Bunk record."
+                                        VerificationState.VERIFIED to "EduPrime did not record attendance, matching your record."
                                     } else {
-                                        VerificationState.MISMATCH to "Portal attendance increased (+$deltaPortalAttended) unexpectedly."
+                                        VerificationState.MISMATCH to "Portal attendance increased unexpectedly."
                                     }
                                 }
                             } else {
