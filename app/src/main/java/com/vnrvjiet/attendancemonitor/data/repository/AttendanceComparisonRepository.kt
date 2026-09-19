@@ -93,9 +93,9 @@ class AttendanceComparisonRepository {
                 val endTimeStr = timetableInfo[record.timetableEntryId]?.second ?: ""
                 val recordEndMillis = record.date + (TimeUtils.parseTimeToMinutes(endTimeStr) * 60 * 1000L)
 
-                val newState = when {
+                val newState: Pair<VerificationState, String> = when {
                     // Rule 1: Temporal Guard (Cannot verify if sync happened before/during class)
-                    recordEndMillis >= lastSyncedAt -> VerificationState.PENDING
+                    recordEndMillis >= lastSyncedAt -> VerificationState.PENDING to "Class ends after the last portal sync."
                     
                     // Rule 2: Portal Reach (Cannot verify if portal hasn't published this many classes yet)
                     remote.conductedClasses < (if (isAfterSnapshot) {
@@ -103,7 +103,7 @@ class AttendanceComparisonRepository {
                     } else {
                         // For historical records, we assume chronological mapping up to the snapshot
                         basePortalConducted - (countBeforeSnapshot - localPos)
-                    }) -> VerificationState.PENDING
+                    }) -> VerificationState.PENDING to "EduPrime has not reflected this class yet."
                     
                     // Rule 3: Attendance Comparison
                     else -> {
@@ -114,26 +114,57 @@ class AttendanceComparisonRepository {
                                 .count { it.status in ATTENDANCE_SEEKING_STATUSES }
                             
                             val deltaPortalAttended = remote.attendedClasses - basePortalAttended
+                            val deltaPortalConducted = remote.conductedClasses - basePortalConducted
+                            val currentPosInDelta = localPos - countBeforeSnapshot
                             
-                            // If portal's new attended count matches or exceeds our new claimed count, it's consistent.
-                            if (deltaPortalAttended >= deltaLocalPresent) {
-                                VerificationState.VERIFIED
+                            // Determine expected outcome based on status
+                            val expectsAttendance = record.status in ATTENDANCE_SEEKING_STATUSES
+                            
+                            // We only evaluate if the portal has published enough classes
+                            if (deltaPortalConducted >= currentPosInDelta) {
+                                // If the student claims attendance, the portal must have granted it
+                                // deltaPortalAttended must cover all claimed attendance up to this point
+                                if (expectsAttendance) {
+                                    if (deltaPortalAttended >= deltaLocalPresent) {
+                                        VerificationState.VERIFIED to "Portal attendance increased (+$deltaPortalAttended), confirming your record."
+                                    } else {
+                                        VerificationState.MISMATCH to "Portal attendance did not increase (+$deltaPortalAttended), but you marked Present/Special."
+                                    }
+                                } else {
+                                    // If student claims absence/bunk/holiday
+                                    // The portal must NOT have granted attendance for this specific slot.
+                                    // Meaning: Total attended <= Total claimed presents
+                                    if (deltaPortalAttended <= deltaLocalPresent) {
+                                        VerificationState.VERIFIED to "Portal result matches your Absent/Bunk record."
+                                    } else {
+                                        VerificationState.MISMATCH to "Portal attendance increased (+$deltaPortalAttended) unexpectedly."
+                                    }
+                                }
                             } else {
-                                // Confidence is high: portal published the class but attended count didn't increase
-                                VerificationState.MISMATCH
+                                VerificationState.PENDING to "EduPrime has not reflected this class yet."
                             }
                         } else {
                             // Historical Total Logic (Fall back to total counts for records before the snapshot)
                             val localPresentCount = sorted.take(localPos).count { it.status in ATTENDANCE_SEEKING_STATUSES }
-                            if (remote.attendedClasses >= localPresentCount) {
-                                VerificationState.VERIFIED
+                            val expectsAttendance = record.status in ATTENDANCE_SEEKING_STATUSES
+                            
+                            if (expectsAttendance) {
+                                if (remote.attendedClasses >= localPresentCount) {
+                                    VerificationState.VERIFIED to "Historical total matches."
+                                } else {
+                                    VerificationState.MISMATCH to "Historical total mismatch."
+                                }
                             } else {
-                                VerificationState.MISMATCH
+                                if (remote.attendedClasses <= localPresentCount) {
+                                    VerificationState.VERIFIED to "Historical total matches."
+                                } else {
+                                    VerificationState.MISMATCH to "Historical total mismatch."
+                                }
                             }
                         }
                     }
                 }
-                updatedLocalRecords.add(record.copy(verificationState = newState))
+                updatedLocalRecords.add(record.copy(verificationState = newState.first, verificationMessage = newState.second))
             }
         }
 

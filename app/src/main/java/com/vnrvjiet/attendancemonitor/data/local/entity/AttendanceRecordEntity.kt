@@ -28,6 +28,7 @@ data class AttendanceRecordEntity(
     val status: AttendanceStatus,
     val syncStatus: SyncStatus,
     val verificationState: VerificationState = VerificationState.PENDING,
+    val verificationMessage: String? = null,
     val remarks: String?,
     val lastModified: Long
 )

@@ -35,7 +35,7 @@ import kotlinx.coroutines.launch
         NotificationEntity::class,
         AttendanceSnapshotEntity::class
     ],
-    version = 6,
+    version = 7,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -59,7 +59,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "attendance_db"
                 )
-                .addMigrations(MIGRATION_5_6)
+                .addMigrations(MIGRATION_5_6, MIGRATION_6_7)
                 .addCallback(DatabaseCallback())
                 .build()
                 INSTANCE = instance
@@ -77,6 +77,12 @@ abstract class AppDatabase : RoomDatabase() {
                             "`lastUpdated` INTEGER NOT NULL, " +
                             "PRIMARY KEY(`subjectCode`))"
                 )
+            }
+        }
+        
+        private val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `attendance_records` ADD COLUMN `verificationMessage` TEXT")
             }
         }
 

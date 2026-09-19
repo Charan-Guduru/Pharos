@@ -1,6 +1,7 @@
 package com.vnrvjiet.attendancemonitor.ui.screens.history
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -30,6 +31,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -37,8 +39,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -50,6 +51,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.vnrvjiet.attendancemonitor.data.model.AttendanceStatus
 import com.vnrvjiet.attendancemonitor.data.model.VerificationState
+import com.vnrvjiet.attendancemonitor.util.TimeUtils
 
 @Composable
 fun HistoryScreen(viewModel: HistoryViewModel = viewModel()) {
@@ -163,6 +165,8 @@ fun EmptyHistoryState() {
 
 @Composable
 fun HistoryItemCard(item: HistoryItem) {
+    var isExpanded by remember { mutableStateOf(false) }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -174,42 +178,132 @@ fun HistoryItemCard(item: HistoryItem) {
             color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
         )
     ) {
-        Row(
-            modifier = Modifier
-                .padding(12.dp)
-                .height(IntrinsicSize.Min),
-            verticalAlignment = Alignment.CenterVertically
+        Column(
+            modifier = Modifier.clickable { isExpanded = !isExpanded }
         ) {
-            Box(
+            Row(
                 modifier = Modifier
-                    .fillMaxHeight()
-                    .width(4.dp)
-                    .background(Color(item.subject.color), RoundedCornerShape(2.dp))
-            )
-            
-            Spacer(modifier = Modifier.width(12.dp))
-            
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = item.subject.subjectName,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1
+                    .padding(12.dp)
+                    .height(IntrinsicSize.Min),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .width(4.dp)
+                        .background(Color(item.subject.color), RoundedCornerShape(2.dp))
                 )
-                Text(
-                    text = "${item.entry.startTime} - ${item.entry.endTime}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                
+                Spacer(modifier = Modifier.width(12.dp))
+                
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = item.subject.subjectName,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1
+                    )
+                    Text(
+                        text = "${item.entry.startTime} - ${item.entry.endTime}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                
+                Column(horizontalAlignment = Alignment.End) {
+                    StatusChip(item.record.status)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    VerificationBadge(item.record.verificationState)
+                }
             }
-            
-            Column(horizontalAlignment = Alignment.End) {
-                StatusChip(item.record.status)
-                Spacer(modifier = Modifier.height(4.dp))
-                VerificationBadge(item.record.verificationState)
+
+            if (isExpanded) {
+                HorizontalDivider(
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                    modifier = Modifier.padding(horizontal = 16.dp)
+                )
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "Attendance Verification",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    
+                    DetailRow("Pharos Record", item.record.status.name)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    val verificationColor = when(item.record.verificationState) {
+                        VerificationState.VERIFIED -> Color(0xFF4CAF50)
+                        VerificationState.MISMATCH -> Color(0xFFF44336)
+                        VerificationState.PENDING -> MaterialTheme.colorScheme.onSurfaceVariant
+                    }
+                    
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "Result", 
+                            style = MaterialTheme.typography.bodyMedium, 
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = when(item.record.verificationState) {
+                                    VerificationState.VERIFIED -> Icons.Default.CheckCircle
+                                    VerificationState.MISMATCH -> Icons.Default.Error
+                                    VerificationState.PENDING -> Icons.Default.Pending
+                                },
+                                contentDescription = null,
+                                modifier = Modifier.size(14.dp),
+                                tint = verificationColor
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = item.record.verificationState.name,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = verificationColor
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = "Reason",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = item.record.verificationMessage ?: "Waiting for portal sync...",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Last Checked: ${TimeUtils.formatTo12Hour(item.record.lastModified)}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.outline
+                    )
+                }
             }
         }
+    }
+}
+
+@Composable
+fun DetailRow(label: String, value: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(text = label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(text = value, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
     }
 }
 

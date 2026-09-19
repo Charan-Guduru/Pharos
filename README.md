@@ -68,6 +68,14 @@ graph TD
 
 ## Attendance Model
 
+## Verification Engine & Transparency
+
+Pharos uses an advanced snapshot-anchored delta comparison system to verify attendance against EduPrime.
+When a verification notification is tapped, users are taken to the History screen where they can expand any record to view:
+*   **Pharos Record**: The locally chosen state (e.g., Present, Absent).
+*   **Verification Result**: `Verified`, `Pending`, or `Mismatch`.
+*   **Reasoning**: A human-readable explanation based directly on the tracked mathematical delta (e.g., "Portal attendance increased (+1), confirming your record").
+
 | Status | Meaning | Verification Rule |
 | :--- | :--- | :--- |
 | **PRESENT** | Attended the class. | Verified if portal count increases. |
@@ -113,6 +121,7 @@ The APK will be generated at: `app/build/outputs/apk/debug/app-debug.apk`
 
 ## Version History
 
+*   **v1.0.8**: Added detailed attendance verification history and resolved `PRESENT` false-verification edge cases.
 *   **v1.0.7**: Calendar UI polish, Sunday-first ordering, and refined multi-date UX.
 *   **v1.0.6**: Flexible multi-date selection for Leave Forecast.
 *   **v1.0.5**: Initial Multi-Day date-range forecast implementation.
@@ -122,8 +131,8 @@ The APK will be generated at: `app/build/outputs/apk/debug/app-debug.apk`
 *   **v1.0.1**: Critical verification correctness fix (Snapshot-Anchored Delta).
 
 ## Current Status
-*   **Current Version**: 1.0.7
-*   **Version Code**: 7
+*   **Current Version**: 1.0.8
+*   **Version Code**: 8
 *   **Major Capabilities**: Full sync, Leave Forecast V2, In-place Updates, Verification Engine.
 
 ## Known Limitations
